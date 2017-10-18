@@ -1,7 +1,7 @@
-package edu.uml.nsay.utilities;
+package edu.uml.nsay.util;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException;
-import org.apache.http.annotation.Immutable;
+import org.hibernate.Session;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -14,11 +14,21 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Unit tests for the DatabaseUtils class.
- * @author Narith Say
+ *  Tests for the DatabaseUtils class
+ *
+ *  @author Narith Say
  */
-@Immutable
-public final class DatabaseUtilsTest {
+public class DatabaseUtilsTest {
+
+    @Test
+    public void testGoodInitFile() throws Exception {
+        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
+    }
+
+    @Test(expected = DatabaseInitializationException.class)
+    public void testBadInitFile() throws Exception {
+        DatabaseUtils.initializeDatabase("bogus");
+    }
 
     @Test
     public void testGetConnection() throws Exception{
@@ -32,6 +42,24 @@ public final class DatabaseUtilsTest {
         Statement statement = connection.createStatement();
         boolean execute = statement.execute("select * from quotes");
         assertTrue("verify that we can execute a statement",execute);
+    }
+
+    /**
+     * Verifies that the instance created by the factory is open
+     */
+    @Test
+    public final void testGetSessionFactoryPositive() {
+        Session session = DatabaseUtils.getSessionFactory().openSession();
+        assertTrue("getSessionFactory() return value is closed", session.isOpen());
+    }
+
+    /**
+     * Verifies that the instance created by the factory is not set to "default read-only"
+     */
+    @Test
+    public final void testGetSessionFactoryNegative() {
+        Session session = DatabaseUtils.getSessionFactory().openSession();
+        assertFalse("getSessionFactory() return value is set to default read-only", session.isDefaultReadOnly());
     }
 
     /**
@@ -60,7 +88,7 @@ public final class DatabaseUtilsTest {
      */
     @Test
     public final void testInitializeDatabasePositive() throws DatabaseConnectionException, DatabaseInitializationException, SQLException {
-        DatabaseUtils.initializeDatabase(DatabaseUtils.DB_LOCATION);
+        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
         assertTrue("getConnection() cannot execute a statement", DatabaseUtils.getConnection().createStatement().execute("select * from quotes"));
     }
 
@@ -72,13 +100,13 @@ public final class DatabaseUtilsTest {
      */
     @Test
     public final void testInitializeDatabaseNegative() throws DatabaseConnectionException, DatabaseInitializationException, SQLException {
-        DatabaseUtils.initializeDatabase(DatabaseUtils.DB_LOCATION);
+        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
         boolean doesExecute = true;
         try {
-            DatabaseUtils.getConnection().createStatement().execute("SELECT john from FCBK");
+            DatabaseUtils.getConnection().createStatement().execute("SELECT creme from oreo");
         } catch (MySQLSyntaxErrorException e) {
             doesExecute = false;
         }
-        assertFalse("getConnection() executes an invalid statement", doesExecute);
+        assertFalse("getConnection() executes an invalid statement", doesExecute);;
     }
 }

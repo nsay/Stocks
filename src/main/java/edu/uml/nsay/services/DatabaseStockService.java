@@ -1,15 +1,21 @@
 package edu.uml.nsay.services;
 
+import edu.uml.nsay.model.StockData;
 import edu.uml.nsay.model.StockQuote;
-import edu.uml.nsay.utilities.DatabaseConnectionException;
-import edu.uml.nsay.utilities.DatabaseUtils;
-import org.apache.http.annotation.Immutable;
-
-import org.joda.time.DateTime;
+import edu.uml.nsay.util.DatabaseConnectionException;
+import edu.uml.nsay.util.DatabaseUtils;
+import edu.uml.nsay.util.Interval;
 
 import java.math.BigDecimal;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -17,20 +23,19 @@ import java.util.List;
  * stock data from a database.
  *
  * @author Narith Say
- * @version 10/02/2017
  */
-@Immutable
-public final class DatabaseStockService implements StockService {
+class DatabaseStockService implements StockService {
 
     /**
      * Return the current price for a share of stock  for the given symbol
      *
      * @param symbol the stock symbol of the company you want a quote for.
      *               e.g. APPL for APPLE
-     * @return a StockQuote instance
-     * @throws StockServiceException
+     * @return a BigDecimal instance
+     * @throws StockServiceException if using the service generates an exception.
      */
-    public final StockQuote getQuote(String symbol) throws StockServiceException {
+    @Override
+    public StockQuote getQuote(String symbol) throws StockServiceException {
         List<StockQuote> stockQuotes = null;
         try {
             Connection connection = DatabaseUtils.getConnection();
@@ -38,98 +43,99 @@ public final class DatabaseStockService implements StockService {
             String queryString = "select * from quotes where symbol = '" + symbol + "'";
 
             ResultSet resultSet = statement.executeQuery(queryString);
-            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
-            while(resultSet.next()) {
+            stockQuotes = new ArrayList<>(resultSet.getFetchSize());
+            while (resultSet.next()) {
                 String symbolValue = resultSet.getString("symbol");
+                Date time = resultSet.getDate("time");
                 BigDecimal price = resultSet.getBigDecimal("price");
-                Timestamp time = resultSet.getTimestamp("time");
-                DateTime givenDate = new DateTime(time);
-                stockQuotes.add(new StockQuote(givenDate, price, symbolValue));
+                stockQuotes.add(new StockQuote(price, time, symbolValue));
             }
+
         } catch (DatabaseConnectionException | SQLException exception) {
             throw new StockServiceException(exception.getMessage(), exception);
         }
         if (stockQuotes.isEmpty()) {
             throw new StockServiceException("There is no stock data for:" + symbol);
         }
-        return stockQuotes.get(stockQuotes.size() - 1);
+        return stockQuotes.get(0);
     }
 
     /**
      * Get a historical list of stock quotes for the provide symbol
      *
-     * @param symbol the stock symbol of the company you want a quote for.
-     *               e.g. APPL for APPLE
-     * @param startRange beginning of the date range
-     * @param endRange end of the date range
-     * @return a StockQuote instance
-     * @throws StockServiceException
+     * @param symbol   the stock symbol to search for
+     * @param from     the date of the first stock quote
+     * @param until    the date of the last stock quote
+     * @param interval the number of stockquotes to get per a 24 hour period.
+     * @return a list of StockQuote instances
+     * @throws StockServiceException if using the service generates an exception.
      */
-    public final List<StockQuote> getQuote(String symbol, DateTime startRange, DateTime endRange) throws StockServiceException {
+    @Override
+    public List<StockQuote> getQuote(String symbol, Calendar from, Calendar until, Interval interval) throws StockServiceException {
         List<StockQuote> stockQuotes = null;
         try {
             Connection connection = DatabaseUtils.getConnection();
             Statement statement = connection.createStatement();
-            String queryString = "select * from quotes where symbol = '" + symbol + "' and time between '"
-                    + startRange.toString(StockQuote.DATE_FORMAT) + "' and '" + endRange.toString(StockQuote.DATE_FORMAT)+ "'";
-            ResultSet resultSet = statement.executeQuery(queryString);
-            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
-            while(resultSet.next()) {
-                String symbolValue = resultSet.getString("symbol");
-                BigDecimal price = resultSet.getBigDecimal("price");
-                Timestamp time = resultSet.getTimestamp("time");
-                DateTime givenDate = new DateTime(time.getTime());
-                stockQuotes.add(new StockQuote(givenDate, price, symbolValue));
-            }
-        } catch (DatabaseConnectionException | SQLException e) {
-            throw new StockServiceException(e.getMessage(), e);
-        }
-        if (stockQuotes.isEmpty()) {
-            throw new StockServiceException("There is no stock data for:" + symbol);
-        }
-        return stockQuotes;
-    }
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(StockData.dateFormat);
 
-    /**
-     * Get a historical list of stock quotes in an interval for the provide symbol
-     *
-     * @param symbol the stock symbol of the company you want a quote for.
-     *               e.g. APPL for APPLE
-     * @param startRange beginning of the date range
-     * @param endRange end of the date range
-     * @param interval time between each StockQuote instances
-     * @return a StockQuote instance
-     * @throws StockServiceException
-     */
-    public final List<StockQuote> getQuote(String symbol, DateTime startRange, DateTime endRange,
-                                           Interval interval) throws StockServiceException{
-        List<StockQuote> stockQuotes = null;
-        try {
-            Connection connection = DatabaseUtils.getConnection();
-            Statement statement = connection.createStatement();
-            String queryString = "select * from quotes where symbol = '" + symbol + "' and time between '" +
-                                 startRange.toString(StockQuote.DATE_FORMAT) + "' and '" +
-                                 endRange.toString(StockQuote.DATE_FORMAT) + "'";
+            String fromString = simpleDateFormat.format(from.getTime());
+            String untilString = simpleDateFormat.format(until.getTime());
+
+            String queryString = "select * from quotes where symbol = '" + symbol + "'"
+                    + "and time BETWEEN '" + fromString + "' and '" + untilString + "'";
+
             ResultSet resultSet = statement.executeQuery(queryString);
-            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
-            DateTime intervalEnd = new DateTime(startRange);
+            stockQuotes = new ArrayList<>();
+            StockQuote previousStockQuote = null;
+
+            Calendar calendar = Calendar.getInstance();
             while (resultSet.next()) {
                 String symbolValue = resultSet.getString("symbol");
+                Timestamp timeStamp = resultSet.getTimestamp("time");
+                calendar.setTimeInMillis(timeStamp.getTime());
                 BigDecimal price = resultSet.getBigDecimal("price");
-                Timestamp time = resultSet.getTimestamp("time");
-                DateTime givenDate = new DateTime(time);
-                if (!givenDate.isBefore(intervalEnd)) {
-                    stockQuotes.add(new StockQuote((DateTime) givenDate, price, symbolValue));
-                    intervalEnd.plusDays(interval.amount());
+                java.util.Date time = calendar.getTime();
+                StockQuote currentStockQuote = new StockQuote(price, time, symbolValue);
+
+                if (previousStockQuote == null) { // first time through always add stockquote
+
+                    stockQuotes.add(currentStockQuote);
+
+                } else if (isInterval(currentStockQuote.getDate(),
+                        interval,
+                        previousStockQuote.getDate())) {
+
+                    stockQuotes.add(currentStockQuote);
                 }
+
+                previousStockQuote = currentStockQuote;
             }
-        } catch (DatabaseConnectionException | SQLException e) {
-            throw new StockServiceException(e.getMessage(), e);
+
+        } catch (DatabaseConnectionException | SQLException exception) {
+            throw new StockServiceException(exception.getMessage(), exception);
         }
         if (stockQuotes.isEmpty()) {
             throw new StockServiceException("There is no stock data for:" + symbol);
         }
+
         return stockQuotes;
     }
-}
 
+
+    /**
+     * Returns true of the currentStockQuote has a date that is later by the time
+     * specified in the interval value from the previousStockQuote time.
+     *
+     * @param endDate   the end time
+     * @param interval  the period of time that must exist between previousStockQuote and currentStockQuote
+     *                  in order for this method to return true.
+     * @param startDate the starting date
+     * @return
+     */
+    private boolean isInterval(java.util.Date endDate, Interval interval, java.util.Date startDate) {
+        Calendar startDatePlusInterval = Calendar.getInstance();
+        startDatePlusInterval.setTime(startDate);
+        startDatePlusInterval.add(Calendar.MINUTE, interval.getMinutes());
+        return endDate.after(startDatePlusInterval.getTime());
+    }
+}

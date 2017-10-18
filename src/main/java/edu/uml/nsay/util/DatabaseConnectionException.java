@@ -1,19 +1,17 @@
-package edu.uml.nsay.utilities;
-
-import org.apache.http.annotation.Immutable;
+package edu.uml.nsay.util;
 
 /**
+ /**
  * This class is used to signal a problem connecting to a database.
  *
  * @author Narith Say
  */
-@Immutable
-public final class DatabaseConnectionException  extends Exception {
+public class DatabaseConnectionException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message and
-     * cause.  Note that the detail message associated with
-     * {@code cause} is not automatically incorporated in
+     * cause.  <p>Note that the detail message associated with
+     * {@code cause} is <i>not</i> automatically incorporated in
      * this exception's detail message.
      *
      * @param  message the detail message (which is saved for later retrieval
@@ -24,5 +22,7 @@ public final class DatabaseConnectionException  extends Exception {
      *         unknown.)
      * @since  1.4
      */
-    public DatabaseConnectionException(String message, Throwable cause) { super(message, cause); }
+    public DatabaseConnectionException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

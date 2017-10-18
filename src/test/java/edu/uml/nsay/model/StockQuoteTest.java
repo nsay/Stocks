@@ -1,127 +1,46 @@
 package edu.uml.nsay.model;
 
-import org.joda.time.DateTime;
-import org.apache.http.annotation.Immutable;
 import org.junit.Before;
 import org.junit.Test;
-import java.math.BigDecimal;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import java.math.BigDecimal;
+import java.util.Calendar;
+import java.util.Date;
+
+import static org.junit.Assert.assertEquals;
 
 /**
- * Unit tests for the StockQuote class.
+ * JUnit test for StockQuote class
  *
  * @author Narith Say
  */
-@Immutable
-public final class StockQuoteTest {
-    // fields of this class
+public class StockQuoteTest {
+
+    private BigDecimal price;
+    private Date date;
     private String symbol;
-    private BigDecimal stockPrice;
-    private DateTime givenDate;
     private StockQuote stockQuote;
 
-    /**
-     * Sets up for each test
-     */
     @Before
-    public final void setUp() {
-        // initialize field variables
+    public void setUp() {
+        price = new BigDecimal(100);
+        date = Calendar.getInstance().getTime();
         symbol = "APPL";
-        stockPrice = new BigDecimal(100);
-        givenDate = DateTime.now();
-        stockQuote = new StockQuote(givenDate, stockPrice, symbol);
+        stockQuote = new StockQuote(price, date, symbol);
     }
 
-    /**
-     * Verifies RuntimeException for incorrect StockQuote Date
-     */
-    @Test(expected = RuntimeException.class)
-    public final void testStockQuoteGivenDate() {
-        // pass a null Date argument into StockQuote constructor
-        DateTime nullDate = null;
-        new StockQuote(nullDate, stockPrice, symbol);
-    }
-
-    /**
-     * Verifies RuntimeException for incorrect StockQuote Price
-     */
-    @Test(expected = RuntimeException.class)
-    public final void testStockQuoteStockPrice() {
-        // pass a null BigDecimal argument into StockQuote constructor
-        BigDecimal nullNumber = null;
-        new StockQuote(givenDate, nullNumber, symbol);
-    }
-
-    /**
-     * Verifies RuntimeException for incorrect StockQuote Symbol
-     */
-    @Test(expected = RuntimeException.class)
-    public final void testStockQuoteSymbol() {
-        // pass a null BigDecimal argument into StockQuote constructor
-        String nullString = null;
-        new StockQuote(givenDate, stockPrice, nullString);
-    }
-
-    /**
-     * Verifies correct stock symbol
-     */
     @Test
-    public final void testgetSymbolPositive() {
-        // compares method return value with expected result
-        assertTrue("Value returned from getSymbol() equals parameter string",
-                stockQuote.getSymbol().equals(symbol));
+    public void testGetPrice() {
+        assertEquals("Share price is correct", price, stockQuote.getPrice());
     }
 
-    /**
-     * Verifies incorrect stock symbol
-     */
     @Test
-    public final void testgetSymbolNegative() {
-        // compares method return value with unexpected result
-        assertFalse("Value returned from getSymbol() equals lowercase-converted parameter string",
-                stockQuote.getSymbol().equals(symbol.toLowerCase()));
+    public void testGetDate() {
+        assertEquals("Share date is correct", date, stockQuote.getDate());
     }
 
-    /**
-     * Verifies correct stock price
-     */
     @Test
-    public final void testGetStockPricePositive() {
-        // compares method return value with expected result
-        assertTrue("Value returned from getStockPrice() equals the parameter value",
-                stockQuote.getStockPrice() == stockPrice);
-    }
-
-    /**
-     * Verifies incorrect stock price
-     */
-    @Test
-    public final void testGetStockPriceNegative() {
-        // compares method return value with unexpected result
-        assertFalse("Value returned from getStockPrice() equals the parameter value with decimal moved left by one point",
-                stockQuote.getStockPrice() == stockPrice.movePointLeft(1));
-    }
-
-    /**
-     * Verifies correct stock date
-     */
-    @Test
-    public final void testGetGivenDatePositive() {
-        // compares method return value with expected result
-        assertTrue("Value returned from getGivenDate() equals parameter date",
-                stockQuote.getGivenDate().equals(givenDate));
-    }
-
-    /**
-     * Verifies incorrect stock date
-     */
-    @Test
-    public final void testGetGivenDateNegative() {
-        // compares method return value with unexpected result
-        DateTime dateNotRecorded = new DateTime(givenDate).plusDays(1);
-        assertFalse("Value returned from getGivenDate() equals day after parameter date",
-                stockQuote.getGivenDate().equals(dateNotRecorded));
+    public void testGetSymbol() {
+        assertEquals("Symbol  is correct", symbol, stockQuote.getSymbol());
     }
 }

@@ -1,14 +1,11 @@
-package edu.uml.nsay.utilities;
-
-import org.apache.http.annotation.Immutable;
+package edu.uml.nsay.util;
 
 /**
- * This class is used to signal a problem initializing to a database.
+ * A higher level exception that tells the client accessing the database failed.
  *
  * @author Narith Say
  */
-@Immutable
-public class DatabaseInitializationException extends Exception {
+public class DatabaseException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message and
@@ -24,5 +21,7 @@ public class DatabaseInitializationException extends Exception {
      *         unknown.)
      * @since  1.4
      */
-    public DatabaseInitializationException(String message, Throwable cause) { super(message, cause); }
+    public DatabaseException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

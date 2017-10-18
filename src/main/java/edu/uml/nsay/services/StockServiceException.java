@@ -1,14 +1,11 @@
 package edu.uml.nsay.services;
 
-import org.apache.http.annotation.Immutable;
-
 /**
  * Used to signal a problem with the StockService.
  *
  * @author Narith Say
  */
-@Immutable
-public final class StockServiceException extends Exception {
+public class StockServiceException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message.  The
@@ -18,21 +15,25 @@ public final class StockServiceException extends Exception {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public StockServiceException(String message) { super(message ); }
+    public StockServiceException(String message) {
+        super(message);
+    }
 
     /**
      * Constructs a new exception with the specified detail message and
-     * cause.  Note that the detail message associated with
-     * {@code cause} is not automatically incorporated in
+     * cause.  <p>Note that the detail message associated with
+     * {@code cause} is <i>not</i> automatically incorporated in
      * this exception's detail message.
      *
      * @param message the detail message (which is saved for later retrieval
      *                by the {@link #getMessage()} method).
      * @param cause   the cause (which is saved for later retrieval by the
-     *                {@link #getCause()} method).  (A null value is
+     *                {@link #getCause()} method).  (A <tt>null</tt> value is
      *                permitted, and indicates that the cause is nonexistent or
      *                unknown.)
      * @since 1.4
      */
-    public StockServiceException(String message, Throwable cause) { super(message, cause); }
+    public StockServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
