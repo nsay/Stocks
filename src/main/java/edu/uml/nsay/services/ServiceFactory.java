@@ -16,13 +16,13 @@ public class ServiceFactory {
      *
      * @return get a <CODE>StockService</CODE> instance
      */
-    public static StockService getStockServiceInstance() {
-        return new SimpleStockService();
+    public static StockService getStockService() {
+        return new DatabaseStockService();
     }
 
     /**
      *
-     * @return get a <CODE>PersonService</CODE> instance
+     * @return get a <CODE>UserService</CODE> instance
      */
-    public static PersonService getPersonServiceInstance() { return new DatabasePersonService(); }
+    public static UserService getUserService() { return new DatabaseUserService(); }
 }

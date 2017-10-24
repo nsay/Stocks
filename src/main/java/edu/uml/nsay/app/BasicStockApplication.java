@@ -2,11 +2,21 @@ package edu.uml.nsay.app;
 
 import edu.uml.nsay.model.StockQuery;
 import edu.uml.nsay.model.StockQuote;
+import edu.uml.nsay.model.database.StockSymbolDAO;
+import edu.uml.nsay.model.xml.Stocks;
+import edu.uml.nsay.services.DatabaseStockService;
+import edu.uml.nsay.services.ServiceFactory;
 import edu.uml.nsay.services.StockService;
 import edu.uml.nsay.services.StockServiceException;
-import edu.uml.nsay.services.ServiceFactory;
 import edu.uml.nsay.util.Interval;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import java.io.StringReader;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.List;
 
@@ -23,7 +33,10 @@ import java.util.List;
 public class BasicStockApplication {
 
     private StockService stockService;
-
+    private static String xmlInstance ="<stocks>\n" +
+            "    <stock symbol=\"VNET\" price=\"110.10\" time=\"2015-02-10 00:00:01\"/>\n" +
+            "    <stock symbol=\"AGTK\" price=\"120.10\" time=\"2015-02-10 00:00:01\"/>\n" +
+            "</stocks>";
 
     /**
      * An enumeration that indicates how the program terminates (ends)
@@ -112,12 +125,41 @@ public class BasicStockApplication {
      * Run the StockTicker application.
      *
      * @param args one or more stock symbols
+     * @throws StockServiceException
+     * @throws JAXBException
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws StockServiceException, JAXBException {
 
         // be optimistic init to positive values
         ProgramTerminationStatusEnum exitStatus = ProgramTerminationStatusEnum.NORMAL;
         String programTerminationMessage = "Normal program termination.";
+
+        // convert from XML to Java
+        JAXBContext jaxbContext = JAXBContext.newInstance(Stocks.class);
+        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+        Stocks quotes = (Stocks) unmarshaller.unmarshal(new StringReader(xmlInstance));
+        System.out.println(quotes.toString());
+
+        // convert from Java to XML
+        JAXBContext context = JAXBContext.newInstance(Stocks.class);
+        Marshaller marshaller = context.createMarshaller();
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+        marshaller.marshal(quotes, System.out);
+
+       //Retrieves XML data in the form of XML domain objects, which are converted to database access object
+        //and stored in the database configuration defined in the hibernate xml file
+        try {
+            List<Stocks.Stock> xmlStocks = quotes.getStock();
+            DatabaseStockService service = (DatabaseStockService) ServiceFactory.getStockService();
+            for (Stocks.Stock stock : xmlStocks) {
+                service.addOrUpdateQuote(new Timestamp(Long.parseLong(stock.getTime())),
+                        new BigDecimal(stock.getPrice()), new StockSymbolDAO(stock.getSymbol()));
+            }
+        }catch (NumberFormatException e) {
+            exitStatus = ProgramTerminationStatusEnum.ABNORMAL;
+            programTerminationMessage = "Invalid date: " + e.getMessage();
+        }
+
         if (args.length != 3) {
             exit(ProgramTerminationStatusEnum.ABNORMAL,
                     "Please supply 3 arguments a stock symbol, a start date \"yyyy-MM-dd 00:00:01\" and end date \"yyyy-MM-dd 00:00:01\"");
@@ -125,7 +167,7 @@ public class BasicStockApplication {
         try {
 
             StockQuery stockQuery = new StockQuery(args[0], args[1], args[2]);
-            StockService stockService = ServiceFactory.getStockServiceInstance();
+            StockService stockService = ServiceFactory.getStockService();
             BasicStockApplication basicStockQuoteApplication =
                     new BasicStockApplication(stockService);
             basicStockQuoteApplication.displayStockQuotes(stockQuery);

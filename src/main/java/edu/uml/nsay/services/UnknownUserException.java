@@ -1,11 +1,11 @@
-package edu.uml.nsay.util;
+package edu.uml.nsay.services;
 
 /**
- * This class is used to signal a problem initializing to a database.
+ * Used to signal a user that was expected to exist in the system does not.
  *
  * @author Narith Say
  */
-public class DatabaseInitializationException extends Exception {
+public class UnknownUserException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message.  The
@@ -15,7 +15,7 @@ public class DatabaseInitializationException extends Exception {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public DatabaseInitializationException(String message) {
+    public UnknownUserException(String message) {
         super(message);
     }
 
@@ -25,15 +25,15 @@ public class DatabaseInitializationException extends Exception {
      * {@code cause} is <i>not</i> automatically incorporated in
      * this exception's detail message.
      *
-     * @param  message the detail message (which is saved for later retrieval
-     *         by the {@link #getMessage()} method).
-     * @param  cause the cause (which is saved for later retrieval by the
-     *         {@link #getCause()} method).  (A <tt>null</tt> value is
-     *         permitted, and indicates that the cause is nonexistent or
-     *         unknown.)
-     * @since  1.4
+     * @param message the detail message (which is saved for later retrieval
+     *                by the {@link #getMessage()} method).
+     * @param cause   the cause (which is saved for later retrieval by the
+     *                {@link #getCause()} method).  (A <tt>null</tt> value is
+     *                permitted, and indicates that the cause is nonexistent or
+     *                unknown.)
+     * @since 1.4
      */
-    public DatabaseInitializationException(String message, Throwable cause) {
+    public UnknownUserException(String message, Throwable cause) {
         super(message, cause);
     }
 }

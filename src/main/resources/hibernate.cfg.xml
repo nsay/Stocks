@@ -17,8 +17,10 @@
         <property name="hibernate.connection.username">monty</property>
         <property name="hibernate.connection.password">some_pass</property>
 
-        <mapping class="edu.uml.nsay.model.Person"/>
-        <mapping class="edu.uml.nsay.model.PersonStock"/>
+        <mapping class="edu.uml.nsay.model.database.PersonDAO"/>
+        <mapping class="edu.uml.nsay.model.database.PersonStockDAO"/>
+        <mapping class="edu.uml.nsay.model.database.QuoteDAO"/>
+        <mapping class="edu.uml.nsay.model.database.StockSymbolDAO"/>
 
 
     </session-factory>

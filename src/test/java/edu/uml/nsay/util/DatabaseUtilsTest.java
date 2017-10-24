@@ -40,7 +40,7 @@ public class DatabaseUtilsTest {
     public void testGetConnectionWorks() throws Exception{
         Connection connection = DatabaseUtils.getConnection();
         Statement statement = connection.createStatement();
-        boolean execute = statement.execute("select * from quotes");
+        boolean execute = statement.execute("select * from quote");
         assertTrue("verify that we can execute a statement",execute);
     }
 
@@ -89,7 +89,7 @@ public class DatabaseUtilsTest {
     @Test
     public final void testInitializeDatabasePositive() throws DatabaseConnectionException, DatabaseInitializationException, SQLException {
         DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
-        assertTrue("getConnection() cannot execute a statement", DatabaseUtils.getConnection().createStatement().execute("select * from quotes"));
+        assertTrue("getConnection() cannot execute a statement", DatabaseUtils.getConnection().createStatement().execute("select * from quote"));
     }
 
     /**

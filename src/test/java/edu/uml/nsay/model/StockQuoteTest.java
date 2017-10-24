@@ -10,9 +10,9 @@ import java.util.Date;
 import static org.junit.Assert.assertEquals;
 
 /**
- * JUnit test for StockQuote class
+ * Unit test for StockQuote class
  *
- * @author Narith Say
+ * Created by Narith
  */
 public class StockQuoteTest {
 

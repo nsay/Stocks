@@ -8,6 +8,7 @@ import edu.uml.nsay.util.Interval;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.xml.bind.JAXBException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -67,8 +68,15 @@ public class BasicStockApplicationTest {
 
     }
 
+    /**
+     * Verifies that the main function, when passed an invalid argument, generates a
+     * NullPointerException or NumberFormatException
+     *
+     * @throws StockServiceException
+     * @throws JAXBException
+     */
     @Test(expected = NullPointerException.class)
-    public void testMainNegative() {
+    public void testMainNegative() throws StockServiceException, JAXBException {
         BasicStockApplication.main(null);
     }
 }

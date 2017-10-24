@@ -1,5 +1,6 @@
 package edu.uml.nsay.model;
 
+import edu.uml.nsay.model.StockQuery;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

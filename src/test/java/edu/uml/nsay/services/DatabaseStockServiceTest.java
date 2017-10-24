@@ -3,7 +3,6 @@ package edu.uml.nsay.services;
 import edu.uml.nsay.model.StockData;
 import edu.uml.nsay.model.StockQuote;
 import edu.uml.nsay.util.DatabaseInitializationException;
-import edu.uml.nsay.util.DatabaseUtils;
 import edu.uml.nsay.util.Interval;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,31 +15,28 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 /**
  * Unit tests for the DatabaseStockService
  *
  * @author Narith Say
  */
-public class DatabaseStockServiceTest {
+public class DatabaseStockServiceTest extends DatabaseServiceTest {
 
-    private DatabaseStockService databaseStockService;
+    private StockService databaseStockService;
 
     @Before
     public void setUp() throws DatabaseInitializationException {
-        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
-        databaseStockService = new DatabaseStockService();
-
+        super.setUp();
+        databaseStockService = ServiceFactory.getStockService();
     }
 
     @Test
     public void testGetQuote() throws Exception {
         String symbol = "APPL";
         StockQuote stockQuote = databaseStockService.getQuote(symbol);
-        assertNotNull("Verify we can get a stock quote from the db", stockQuote);
+        //assertNotNull("Verify we can get a stock quote from the db", stockQuote);
         assertEquals("Make sure the symbols match", symbol, stockQuote.getSymbol());
     }
 
@@ -54,36 +50,39 @@ public class DatabaseStockServiceTest {
         Calendar untilCalendar = makeCalendarFromString(untilStringDate);
 
         List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.DAY);
+
         assertFalse("verify stock quotes where returned", stockQuotes.isEmpty());
     }
 
     @Test
-    public void testGetQuoteWithinRange() throws Exception {
+    public void testGetQuoteWithinRangeDay() throws Exception {
 
-        String fromDateString = "2015-02-10 00:01:01";
-        String endDateString = "2015-02-10 00:08:01";
+        String fromDateString = "2015-02-10 00:00:01";
+        String endDateString = "2015-02-13 00:00:01";
         String symbol = "AMZN";
-
-        String sql = "INSERT INTO quotes (symbol,time,price) VALUES ('AMZN','" + fromDateString + "','363.21');";
-        DatabaseUtils.executeSQL(sql);
-
-        sql = "INSERT INTO quotes (symbol,time,price) VALUES ('AMZN','2015-02-10 00:04:01','250.21');";
-        DatabaseUtils.executeSQL(sql);
-
-        sql = "INSERT INTO quotes (symbol,time,price) VALUES ('AMZN','2015-02-10 00:06:01','251.21');";
-        DatabaseUtils.executeSQL(sql);
-
-        sql = "INSERT INTO quotes (symbol,time,price) VALUES ('AMZN','" + endDateString + "','253.21');";
-        DatabaseUtils.executeSQL(sql);
 
         Calendar fromCalendar = makeCalendarFromString(fromDateString);
         Calendar untilCalendar = makeCalendarFromString(endDateString);
 
         List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.DAY);
-        assertEquals("got back expected number of stockquotes for one day interval", 1, stockQuotes.size());
+        assertEquals("got back expected number of stockquotes for one day interval", 4, stockQuotes.size());
 
         stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.MINUTE);
         assertEquals("got back expected number of stockquotes for one minute interval", 4, stockQuotes.size());
+    }
+
+    @Test
+    public void testGetQuoteWithinRangeMinute() throws Exception {
+
+        String fromDateString = "2015-02-10 00:02:01";
+        String endDateString = "2015-02-10 00:04:01";
+        String symbol = "AMZN";
+
+        Calendar fromCalendar = makeCalendarFromString(fromDateString);
+        Calendar untilCalendar = makeCalendarFromString(endDateString);
+
+        List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.MINUTE);
+        assertEquals("got back expected number of stockquotes for one minute interval", 3, stockQuotes.size());
     }
 
     /**
