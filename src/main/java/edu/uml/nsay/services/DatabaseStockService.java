@@ -1,186 +1,155 @@
 package edu.uml.nsay.services;
 
-import edu.uml.nsay.model.StockQuote;
 import edu.uml.nsay.model.database.QuoteDAO;
 import edu.uml.nsay.model.database.StockSymbolDAO;
-import edu.uml.nsay.util.DatabaseUtils;
-import edu.uml.nsay.util.Interval;
-import org.hibernate.Criteria;
+import edu.uml.nsay.model.StockQuote;
+import edu.uml.nsay.util.*;
+import org.apache.http.annotation.Immutable;
+
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
-import org.hibernate.criterion.Restrictions;
+import org.joda.time.DateTime;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 /**
- * An implementation of the StockService interface that gets
- * stock data from a database.
+ * This class defines methods for getting stock quotes from a database,
+ * and implements the StockService interface.
  *
  * @author Narith Say
  */
+@Immutable
 public class DatabaseStockService implements StockService {
+    // fields of this class
+    public static final DatabaseStockService INSTANCE = new DatabaseStockService();
 
-    /**
-     * Return the current price for a share of stock  for the given symbol
-     *
-     * @param symbol the stock symbol of the company you want a quote for.
-     *               e.g. APPL for APPLE
-     * @return a  <CODE>BigDecimal</CODE> instance
-     * @throws StockServiceException if using the service generates an exception.
-     *                               If this happens, trying the service may work, depending on the actual cause of the
-     *                               error.
-     */
-    @Override
-    public StockQuote getQuote(String symbol) throws StockServiceException {
-        StockQuote stockQuote;
-
-        StockSymbolDAO stockSymbol = DatabaseUtils.findUniqueResultBy("symbol", symbol, StockSymbolDAO.class, true);
-        List<QuoteDAO> quotes = DatabaseUtils.findResultsBy("stockSymbol", stockSymbol, QuoteDAO.class, true);
-
-        if (quotes.isEmpty()) {
-            throw new StockServiceException("Could not find any stock quotes for: " + symbol);
-        }
-
-        QuoteDAO quoteDAO = quotes.get(0);
-        // pojo conversion
-        long time = quoteDAO.getTime().getTime();
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(time);
-        java.util.Date quoteTime = calendar.getTime();
-        stockQuote = new StockQuote(quoteDAO.getPrice(), quoteTime, stockSymbol.getSymbol());
-
-        return stockQuote;
+    // hides the constructor so that new instances are build through the factory class
+    protected DatabaseStockService() {
     }
 
     /**
-     * Get a historical list of stock quotes for the provided symbol
+     * Gets today's StockQuote instance for the given symbol
      *
-     * @param symbol   the stock symbol to search for
-     * @param from     the date of the first stock quote
-     * @param until    the date of the last stock quote
-     * @return a list of StockQuote instances
-     * @throws StockServiceException if using the service generates an exception.
-     *                               If this happens, trying the service may work, depending on the actual cause of the
-     *                               error.
+     * @param symbol the symbol for the company issuing the stock
+     * @return a StockQuote instance
+     * @throws StockServiceException
      */
-    @SuppressWarnings("Duplicates")
-    @Override
-    public List<StockQuote> getQuote(String symbol, Calendar from, Calendar until)
-            throws StockServiceException {
+    public final StockQuote getQuote(String symbol) throws StockServiceException {
         List<StockQuote> stockQuotes = null;
-        Session session = null;
-        Transaction transaction = null;
-
         try {
-            StockSymbolDAO stockSymbol = DatabaseUtils.findUniqueResultBy("symbol", symbol, StockSymbolDAO.class, true);
-            session = DatabaseUtils.getSessionFactory().openSession();
-            transaction = session.beginTransaction();
-            Timestamp fromTimeStamp = new Timestamp(from.getTimeInMillis());
-            Timestamp untilTimestamp = new Timestamp(until.getTimeInMillis());
-            Criteria criteria = session.createCriteria(QuoteDAO.class);
-            criteria.add(Restrictions.eq("stockSymbol", stockSymbol));
-            criteria.add(Restrictions.between("time", fromTimeStamp,untilTimestamp));
-            List<QuoteDAO> quoteDAOs = (List<QuoteDAO>) criteria.list();
-            transaction.commit();
-            stockQuotes = new ArrayList<>(quoteDAOs.size());
-            // do within interval here.
-            for (QuoteDAO quoteDAO : quoteDAOs) {
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(quoteDAO.getTime().getTime());
-                stockQuotes.add(new StockQuote(quoteDAO.getPrice(),
-                        calendar.getTime(),
-                        quoteDAO.getStockSymbol().getSymbol()));
+            Connection connection = DatabaseUtils.getConnection();
+            Statement statement = connection.createStatement();
+            String queryString = "select id from stock_symbols where symbol = '" + symbol + "'";
+            ResultSet resultSet = statement.executeQuery(queryString);
+            resultSet.next();
+            queryString = "select * from quotes where symbol_id = '" + resultSet.getInt("id") + "'";
+            resultSet = statement.executeQuery(queryString);
+            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
+            while(resultSet.next()) {
+                BigDecimal price = resultSet.getBigDecimal("price");
+                Timestamp timestamp = resultSet.getTimestamp("time");
+                DateTime time = new DateTime(timestamp);
+                stockQuotes.add(new StockQuote(time, price, symbol));
             }
-        } catch (HibernateException e)  {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            if (session != null) {
-                session.close();
-            }
-            session  = null;
-
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+        } catch (DatabaseConnectionException | SQLException e) {
+            throw new StockServiceException(e.getMessage(), e);
         }
+        if (stockQuotes.isEmpty()) {
+            throw new StockServiceException("No instances of " + symbol + " found in the selected range");
+        }
+        return stockQuotes.get(stockQuotes.size() - 1);
+    }
 
+    /**
+     * Gets the List of StockQuote instances for the given symbol and date range
+     *
+     * @param symbol abbreviation for the company issuing the stock
+     * @param startRange beginning of the date range
+     * @param endRange end of the date range
+     * @return a List of StockQuote instances
+     * @throws StockServiceException
+     */
+    public final List<StockQuote> getQuote(String symbol, DateTime startRange, DateTime endRange) throws StockServiceException {
+        List<StockQuote> stockQuotes = null;
+        try {
+            Connection connection = DatabaseUtils.getConnection();
+            Statement statement = connection.createStatement();
+            String queryString = "select id from stock_symbols where symbol = '" + symbol + "'";
+            ResultSet resultSet = statement.executeQuery(queryString);
+            resultSet.next();
+            queryString = "select * from quotes where symbol_id = '" + resultSet.getInt("id") + "' and time between '"
+                    + startRange.toString(StockQuote.DATE_PATTERN) + "' and '" + endRange.toString(StockQuote.DATE_PATTERN)+ "'";
+            resultSet = statement.executeQuery(queryString);
+            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
+            while(resultSet.next()) {
+                BigDecimal price = resultSet.getBigDecimal("price");
+                Timestamp timestamp = resultSet.getTimestamp("time");
+                DateTime time = new DateTime(timestamp);
+                stockQuotes.add(new StockQuote(time, price, symbol));
+            }
+        } catch (DatabaseConnectionException | SQLException e) {
+            throw new StockServiceException(e.getMessage(), e);
+        }
+        if (stockQuotes.isEmpty()) {
+            throw new StockServiceException("No instances of " + symbol + " found in the selected range");
+        }
         return stockQuotes;
     }
 
     /**
-     * Get a historical list of stock quotes for the provided symbol in an interval
+     * Gets the List of StockQuote instances for the given symbol, date range and interval
      *
-     * @param symbol   the stock symbol to search for
-     * @param from     the date of the first stock quote
-     * @param until    the date of the last stock quote
-     * @param interval the number of stockquotes to get per a 24 hour period.
-     * @return a list of StockQuote instances
-     * @throws StockServiceException if using the service generates an exception.
-     *                               If this happens, trying the service may work, depending on the actual cause of the
-     *                               error.
+     * @param symbol abbreviation for the company issuing the stock
+     * @param startRange beginning of the date range
+     * @param endRange end of the date range
+     * @param interval time elapsed between stockQuote instances
+     * @return a List of StockQuote instances
+     * @throws StockServiceException
      */
-    @SuppressWarnings("Duplicates")
-    @Override
-    public List<StockQuote> getQuote(String symbol, Calendar from, Calendar until, Interval interval)
-            throws StockServiceException {
+    public final List<StockQuote> getQuote(String symbol, DateTime startRange, DateTime endRange, Interval interval) throws StockServiceException{
         List<StockQuote> stockQuotes = null;
-        Session session = null;
-        Transaction transaction = null;
-
         try {
-            StockSymbolDAO stockSymbol = DatabaseUtils.findUniqueResultBy("symbol", symbol, StockSymbolDAO.class, true);
-            session = DatabaseUtils.getSessionFactory().openSession();
-            transaction = session.beginTransaction();
-            Timestamp fromTimeStamp = new Timestamp(from.getTimeInMillis());
-            Timestamp untilTimestamp = new Timestamp(until.getTimeInMillis());
-            Criteria criteria = session.createCriteria(QuoteDAO.class);
-            criteria.add(Restrictions.eq("stockSymbol", stockSymbol));
-            criteria.add(Restrictions.between("time", fromTimeStamp,untilTimestamp));
-            List<QuoteDAO> quoteDAOs = (List<QuoteDAO>) criteria.list();
-            transaction.commit();
-            stockQuotes = new ArrayList<>(quoteDAOs.size());
-            // do within interval here.
-            for (QuoteDAO quoteDAO : quoteDAOs) {
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(quoteDAO.getTime().getTime());
-                stockQuotes.add(new StockQuote(quoteDAO.getPrice(),
-                        calendar.getTime(),
-                        quoteDAO.getStockSymbol().getSymbol()));
+            Connection connection = DatabaseUtils.getConnection();
+            Statement statement = connection.createStatement();
+            String queryString = "select id from stock_symbols where symbol = '" + symbol + "'";
+            ResultSet resultSet = statement.executeQuery(queryString);
+            resultSet.next();
+            queryString = "select * from quotes where symbol_id = '" + resultSet.getInt("id") + "' and time between '"
+                    + startRange.toString(StockQuote.DATE_PATTERN) + "' and '" + endRange.toString(StockQuote.DATE_PATTERN) + "'";
+            resultSet = statement.executeQuery(queryString);
+            stockQuotes = new ArrayList<StockQuote>(resultSet.getFetchSize());
+            DateTime intervalEnd = new DateTime(startRange);
+            while (resultSet.next()) {
+                BigDecimal price = resultSet.getBigDecimal("price");
+                Timestamp timestamp = resultSet.getTimestamp("time");
+                DateTime time = new DateTime(timestamp);
+                if (!time.isBefore(intervalEnd)) {
+                    stockQuotes.add(new StockQuote((DateTime) time, price, symbol));
+                    intervalEnd.plusHours(interval.amount());
+                }
             }
-        } catch (HibernateException e)  {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            if (session != null) {
-                session.close();
-            }
-            session  = null;
-
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+        } catch (DatabaseConnectionException | SQLException e) {
+            throw new StockServiceException(e.getMessage(), e);
         }
-
+        if (stockQuotes.isEmpty()) {
+            throw new StockServiceException("No instances of " + symbol + " found in the selected range");
+        }
         return stockQuotes;
     }
 
     /**
      * Adds a new quote or updates the data of an existing quote
      *
-     * @param time a {@code Timestamp} object representing the time of the quote
+     * @param time a DateTime object representing the time of the quote
      * @param price the price of the quote
      * @param stockSymbol the symbol of the quote
      * @throws StockServiceException if a service can not perform the requested operation
      */
-    public final void addOrUpdateQuote(Timestamp time, BigDecimal price, StockSymbolDAO stockSymbol) throws StockServiceException {
+    public final void addOrUpdateQuote(DateTime time, BigDecimal price, StockSymbolDAO stockSymbol) throws StockServiceException {
         Session session =  DatabaseUtils.getSessionFactory().openSession();
         Transaction transaction = null;
         try {
@@ -201,22 +170,5 @@ public class DatabaseStockService implements StockService {
                 transaction.commit();
             }
         }
-    }
-
-    /**
-     * Returns true of the currentStockQuote has a date that is later by the time
-     * specified in the interval value from the previousStockQuote time.
-     *
-     * @param endDate   the end time
-     * @param interval  the period of time that must exist between previousStockQuote and currentStockQuote
-     *                  in order for this method to return true.
-     * @param startDate the starting date
-     * @return
-     */
-    private boolean isInterval(java.util.Date endDate, Interval interval, java.util.Date startDate) {
-        Calendar startDatePlusInterval = Calendar.getInstance();
-        startDatePlusInterval.setTime(startDate);
-        startDatePlusInterval.add(Calendar.MINUTE, interval.getMinutes());
-        return endDate.after(startDatePlusInterval.getTime());
     }
 }

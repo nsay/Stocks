@@ -1,42 +1,64 @@
 package edu.uml.nsay.app;
 
-import edu.uml.nsay.model.StockQuery;
 import edu.uml.nsay.model.StockQuote;
-import edu.uml.nsay.model.database.StockSymbolDAO;
-import edu.uml.nsay.model.xml.Stocks;
-import edu.uml.nsay.services.DatabaseStockService;
-import edu.uml.nsay.services.ServiceFactory;
-import edu.uml.nsay.services.StockService;
+import edu.uml.nsay.model.xml.XMLStocksList;
+import edu.uml.nsay.services.*;
 import edu.uml.nsay.services.StockServiceException;
 import edu.uml.nsay.util.Interval;
+import org.apache.http.annotation.Immutable;
+import org.joda.time.DateTime;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import java.io.StringReader;
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A simple application that shows the StockService in action.
  *
- * It doesn't print out any stock information. This application
- * confirms that StockService is working with the correct arguments.
+ * This application confirms that StockService is working with the correct arguments.
  *
- * Example args format: AMZN "2015-02-10 00:00:01" "2015-02-13 00:00:01"
+ * Example args format: AMZN "2015-02-10 00:01" "2015-02-13 00:01"
  *
  * @author Narith Say
  */
-public class BasicStockApplication {
-
-    private StockService stockService;
+@Immutable
+public final class BasicStockApplication {
+    // fields of this class
+    private final StockService stockService;
     private static String xmlInstance ="<stocks>\n" +
             "    <stock symbol=\"VNET\" price=\"110.10\" time=\"2015-02-10 00:00:01\"/>\n" +
             "    <stock symbol=\"AGTK\" price=\"120.10\" time=\"2015-02-10 00:00:01\"/>\n" +
             "</stocks>";
+
+    /**
+     * Constructs a new {@code BasicStockApplication} instance
+     *
+     * @param stockService used to get actual stock data (external dependency)
+     */
+    public BasicStockApplication(StockService stockService) {
+        this.stockService = stockService;
+    }
+
+    /**
+     * Gets a List of StockQuote instances for the specified date range
+     *
+     * @param symbol  symbol for the company issuing the stock
+     * @param startRange beginning of the date range
+     * @param endRange   end of the date range
+     * @param interval time elapsed between stockQuote instances
+     * @return a List containing one StockQuote instance per interval in the specified date range
+     * @throws StockServiceException
+     */
+    public List<StockQuote> getStockHistory(String symbol, DateTime startRange, DateTime endRange, Interval interval) throws StockServiceException {
+        // set up variables for getting and storing {@code StockQuotes}
+        List<StockQuote> returnValue = new ArrayList();
+        returnValue.addAll(stockService.getQuote(symbol, startRange, endRange, interval));
+        return returnValue;
+    }
 
     /**
      * An enumeration that indicates how the program terminates (ends)
@@ -69,41 +91,6 @@ public class BasicStockApplication {
     }
 
     /**
-     * Create a new Application.
-     *
-     * @param stockService the StockService this application instance should use for
-     *                     stock queries.
-     */
-    public BasicStockApplication(StockService stockService) {
-        this.stockService = stockService;
-    }
-
-    /**
-     * Given a stockQuery get back a the info about the stock to display to th user.
-     *
-     * @param stockQuery the stock to get data for.
-     * @return a String with the stock data in it.
-     * @throws StockServiceException If data about the stock can't be retrieved. This is a
-     *                               fatal error.
-     */
-    public String displayStockQuotes(StockQuery stockQuery) throws StockServiceException {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        List<StockQuote> stockQuotes =
-                stockService.getQuote(stockQuery.getSymbol(),
-                        stockQuery.getFrom(),
-                        stockQuery.getUntil(),
-                        Interval.DAY); // get one quote for each day in the from until date range.
-
-        stringBuilder.append("Stock quotes for: " + stockQuery.getSymbol() + "\n");
-        for (StockQuote stockQuote : stockQuotes) {
-            stringBuilder.append(stockQuote.toString());
-        }
-
-        return stringBuilder.toString();
-    }
-
-    /**
      * Terminate the application.
      *
      * @param statusCode        an enum value that indicates if the program terminated ok or not.
@@ -122,59 +109,37 @@ public class BasicStockApplication {
     }
 
     /**
-     * Run the StockTicker application.
+     * A main method which enables program execution
      *
-     * @param args one or more stock symbols
+     * @param args an array that should contain as elements:
+     *             String representations of a valid stock symbol, start date, end date and interval of time
      * @throws StockServiceException
      * @throws JAXBException
      */
     public static void main(String[] args) throws StockServiceException, JAXBException {
-
-        // be optimistic init to positive values
+        //StockService databaseService = ServiceFactory.getStockService(ServiceType.DATABASE);
         ProgramTerminationStatusEnum exitStatus = ProgramTerminationStatusEnum.NORMAL;
         String programTerminationMessage = "Normal program termination.";
 
+
         // convert from XML to Java
-        JAXBContext jaxbContext = JAXBContext.newInstance(Stocks.class);
+        JAXBContext jaxbContext = JAXBContext.newInstance(XMLStocksList.class);
         Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        Stocks quotes = (Stocks) unmarshaller.unmarshal(new StringReader(xmlInstance));
-        System.out.println(quotes.toString());
+        XMLStocksList quotes = (XMLStocksList) unmarshaller.unmarshal(new StringReader(xmlInstance));
+
 
         // convert from Java to XML
-        JAXBContext context = JAXBContext.newInstance(Stocks.class);
+        JAXBContext context = JAXBContext.newInstance(XMLStocksList.class);
         Marshaller marshaller = context.createMarshaller();
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-        marshaller.marshal(quotes, System.out);
 
-       //Retrieves XML data in the form of XML domain objects, which are converted to database access object
-        //and stored in the database configuration defined in the hibernate xml file
-        try {
-            List<Stocks.Stock> xmlStocks = quotes.getStock();
-            DatabaseStockService service = (DatabaseStockService) ServiceFactory.getStockService();
-            for (Stocks.Stock stock : xmlStocks) {
-                service.addOrUpdateQuote(new Timestamp(Long.parseLong(stock.getTime())),
-                        new BigDecimal(stock.getPrice()), new StockSymbolDAO(stock.getSymbol()));
-            }
-        }catch (NumberFormatException e) {
-            exitStatus = ProgramTerminationStatusEnum.ABNORMAL;
-            programTerminationMessage = "Invalid date: " + e.getMessage();
-        }
 
         if (args.length != 3) {
             exit(ProgramTerminationStatusEnum.ABNORMAL,
                     "Please supply 3 arguments a stock symbol, a start date \"yyyy-MM-dd 00:00:01\" and end date \"yyyy-MM-dd 00:00:01\"");
         }
         try {
-
-            StockQuery stockQuery = new StockQuery(args[0], args[1], args[2]);
-            StockService stockService = ServiceFactory.getStockService();
-            BasicStockApplication basicStockQuoteApplication =
-                    new BasicStockApplication(stockService);
-            basicStockQuoteApplication.displayStockQuotes(stockQuery);
-
-        } catch (ParseException e) {
-            exitStatus = ProgramTerminationStatusEnum.ABNORMAL;
-            programTerminationMessage = "Invalid date data: " + e.getMessage();
+            StockService databaseService = ServiceFactory.getStockService(ServiceType.DATABASE);
         } catch (StockServiceException e) {
             exitStatus = ProgramTerminationStatusEnum.ABNORMAL;
             programTerminationMessage = "StockService failed: " + e.getMessage();
@@ -185,6 +150,6 @@ public class BasicStockApplication {
 
         exit(exitStatus, programTerminationMessage);
         System.out.println("Oops could not parse a date");
+
     }
 }
-

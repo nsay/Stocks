@@ -1,29 +1,18 @@
 package edu.uml.nsay.util;
 
+import org.apache.http.annotation.Immutable;
+
 /**
- * An enumeration that represents a of unit of time
+ * This interface requires that implementing classes define methods for getting the unit of time
+ * and amount of units for an enum.
  *
  * @author Narith Say
  */
-public enum Interval {
-
-    MINUTE(1), HOUR(60), HALF_DAY(60 * 6), DAY(60 * 24);
-
-    private int minutes;
+@Immutable
+public interface Interval {
 
     /**
-     * Create a new  Interval enumeration.
-     * @param minutes the number of minutes in the interval
+     * @return the amount of the unit desired
      */
-    private Interval(int minutes) {
-        this.minutes = minutes;
-    }
-
-    /**
-     *
-     * @return the number of minutes in the interval
-     */
-    public int getMinutes() {
-        return minutes;
-    }
+    int amount();
 }

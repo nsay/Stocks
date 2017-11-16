@@ -1,76 +1,135 @@
 package edu.uml.nsay.app;
 
-import edu.uml.nsay.model.StockQuery;
 import edu.uml.nsay.model.StockQuote;
-import edu.uml.nsay.services.StockService;
+import edu.uml.nsay.services.*;
+import edu.uml.nsay.util.DatabaseInitializationException;
+import edu.uml.nsay.util.DatabaseUtils;
+import edu.uml.nsay.util.HoursInterval;
 import edu.uml.nsay.services.StockServiceException;
-import edu.uml.nsay.util.Interval;
-import org.junit.Before;
-import org.junit.Test;
+import org.apache.http.annotation.Immutable;
+import org.joda.time.DateTime;
+import org.junit.*;
+import org.mockito.Mockito;
 
 import javax.xml.bind.JAXBException;
 import java.math.BigDecimal;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests for BasicStockApplication
+ * Unit tests for the BasicStockApplication class.
  *
  * @author Narith Say
  */
-public class BasicStockApplicationTest {
+@Immutable
+public final class BasicStockApplicationTest {
+    // fields of this class
+    private StockService stockService;
+    private DateTime startRange;
+    private DateTime endRange;
+    private String symbol;
+    private BigDecimal price;
+    private BasicStockApplication basicStockApplication;
+    private HoursInterval interval;
+    private static final int NUMBER_OF_DAYS = 100;
 
-    private BasicStockApplication basicStockQuoteApplication;
-    private StockService stockServiceMock;
-
+    /**
+     * Sets up the logic common to each test
+     *
+     * @throws StockServiceException
+     */
     @Before
-    public void setUp() {
-        stockServiceMock = mock(StockService.class);
-    }
+    public final void setUp() throws DatabaseInitializationException, StockServiceException {
+        // initialize database
+        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
 
-    @Test
-    public void testValidConstruction() {
-        basicStockQuoteApplication = new BasicStockApplication(stockServiceMock);
-        assertNotNull("Basic construction works");
-    }
+        // mock the external dependency
+        stockService = Mockito.mock(StockService.class);
 
-    @Test
-    public void testDisplayResults() throws ParseException, StockServiceException {
-        basicStockQuoteApplication = new BasicStockApplication(stockServiceMock);
-        String symbol = "APPL";
-        String from = "2011-10-29 12:12:12";    //yyyy-MM-dd HH:mm:ss
-        String until = "2014-11-29 12:12:12";
-        StockQuery stockQuery = new StockQuery(symbol, from, until);
+        // create the data we expect the service to return
+        symbol = "GOOG";
+        startRange = DateTime.now().minusDays(NUMBER_OF_DAYS);
+        endRange = DateTime.now();
+        price = new BigDecimal(100);
+        interval = HoursInterval.WEEK;
 
-        List<StockQuote> stockQuotes = new ArrayList<>();
-        StockQuote stockQuoteFromDate = new StockQuote(new BigDecimal(100), stockQuery.getFrom().getTime(), stockQuery.getSymbol());
-        stockQuotes.add(stockQuoteFromDate);
-        StockQuote stockQuoteUntilDate = new StockQuote(new BigDecimal(100), stockQuery.getUntil().getTime(), stockQuery.getSymbol());
-        stockQuotes.add(stockQuoteUntilDate);
+        // tell the mock service to return a StockQuote with a specific price and symbol when getQuote() is called
+        when(stockService.getQuote(any(String.class)))
+                .thenReturn(new StockQuote(DateTime.now(), price, symbol));
 
-        when(stockServiceMock.getQuote(any(String.class),
-                any(Calendar.class),
-                any(Calendar.class),
-                any(Interval.class))).thenReturn(stockQuotes);
-
-        String output = basicStockQuoteApplication.displayStockQuotes(stockQuery);
-        assertTrue("make sure symbol appears in output", output.contains(symbol));
-        assertTrue("make sure from date appears in output", output.contains(from));
-        assertTrue("make sure until date in output", output.contains(until));
-
+        // create the StickTicker instance to test
+        basicStockApplication = new BasicStockApplication(stockService);
     }
 
     /**
-     * Verifies that the main function, when passed an invalid argument, generates a
-     * NullPointerException or NumberFormatException
+     * Test that the return value has the correct date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetStockHistoryDatePositive() throws StockServiceException {
+        // compares method return values with expected results
+        List<StockQuote> stockHistory = basicStockApplication.getStockHistory(symbol, startRange, endRange, interval);
+        DateTime time = new DateTime(startRange);
+        for (StockQuote quote : stockHistory) {
+            assertTrue("Date recorded returned from return value of getStockHistory() does not equal the parameter string",
+                    quote.getTime().equals(time));
+            time.plusDays(interval.amount());
+        }
+    }
+
+    /**
+     * Test that the return value as an incorrect date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetStockHistoryDateNegative() throws StockServiceException {
+        // compares method return values with unexpected results
+        List<StockQuote> stockHistory = basicStockApplication.getStockHistory(symbol, endRange, startRange, interval);
+        DateTime time = new DateTime(startRange);
+        for (StockQuote quote : stockHistory) {
+            assertFalse("Date recorded returned from return value of getStockHistory() does not equal the parameter string",
+                    quote.getTime().equals(time));
+            time.plusDays(interval.amount());
+        }
+    }
+
+    /**
+     * Test that the return value has the correct stock symbol
+     *
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetStockHistorySymbolPositive() throws StockServiceException {
+        // compares method return values with expected results
+        List<StockQuote> stockHistory = basicStockApplication.getStockHistory(symbol, startRange, endRange, interval);
+        for (StockQuote quote : stockHistory) {
+            assertTrue("Symbol returned from return value of getStockHistory() does not equal the parameter string",
+                    quote.getSymbol().equals(symbol));
+        }
+    }
+
+    /**
+     * Test that the return value as an incorrect stock symbol
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetStockHistorySymbolNegative() throws StockServiceException {
+        // compares method return values with unexpected results
+        List<StockQuote> stockHistory = basicStockApplication.getStockHistory(symbol, startRange, endRange, interval);
+        for (StockQuote quote : stockHistory) {
+            assertFalse("Symbol returned from return value of getStockHistory() equals lowercase-converted parameter string",
+                    quote.getSymbol().equals(symbol.toLowerCase()));
+        }
+    }
+
+    /**
+     * Test that the main function, when passed an invalid argument, generates a NullPointerException
      *
      * @throws StockServiceException
      * @throws JAXBException

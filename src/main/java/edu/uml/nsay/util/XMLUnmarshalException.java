@@ -1,11 +1,11 @@
-package edu.uml.nsay.services;
+package edu.uml.nsay.util;
 
 /**
- * Used to signal that there is no data associated with the specified stock symbol.
+ * Used to signal a problem with the unmarshal method of XMLUtils.
  *
  * @author Narith Say
  */
-public class UnknownStockSymbolException extends Exception {
+public final class XMLUnmarshalException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message.  The
@@ -15,9 +15,7 @@ public class UnknownStockSymbolException extends Exception {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public UnknownStockSymbolException(String message) {
-        super(message);
-    }
+    public XMLUnmarshalException(String message) { super(message); }
 
     /**
      * Constructs a new exception with the specified detail message and
@@ -33,7 +31,5 @@ public class UnknownStockSymbolException extends Exception {
      *                unknown.)
      * @since 1.4
      */
-    public UnknownStockSymbolException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    public XMLUnmarshalException(String message, Throwable cause) { super(message, cause); }
 }

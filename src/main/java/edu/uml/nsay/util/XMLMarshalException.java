@@ -1,11 +1,14 @@
-package edu.uml.nsay.services;
+package edu.uml.nsay.util;
+
+import org.apache.http.annotation.Immutable;
 
 /**
- * Used to signal a user that was expected to exist in the system does not.
+ * Used to signal a problem with the marshal method of XMLUtils.
  *
  * @author Narith Say
  */
-public class UnknownUserException extends Exception {
+@Immutable
+public final class XMLMarshalException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message.  The
@@ -15,9 +18,7 @@ public class UnknownUserException extends Exception {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public UnknownUserException(String message) {
-        super(message);
-    }
+    public XMLMarshalException(String message) { super(message); }
 
     /**
      * Constructs a new exception with the specified detail message and
@@ -33,7 +34,5 @@ public class UnknownUserException extends Exception {
      *                unknown.)
      * @since 1.4
      */
-    public UnknownUserException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    public XMLMarshalException(String message, Throwable cause) { super(message, cause); }
 }

@@ -1,89 +1,110 @@
 package edu.uml.nsay.model.database;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import edu.uml.nsay.model.database.DatabaseAccessObject;
+
+import javax.persistence.*;
 
 /**
- * This class models the User database table
+ * This class models the person database table
  *
  * @author Narith Say
  */
-@Entity
-@Table(name = "person", schema = "", catalog = "stocks")
-public class PersonDAO implements DatabasesAccessObject{
 
+@Entity
+@Table(name="person")
+public class PersonDAO implements DatabaseAccessObject {
+    // private fields of this class
     private int id;
-    private String userName;
+    private String firstName;
+    private String lastName;
 
     /**
-     * Constructs a {@code PersonDAO} that needs to be initialized
+     * Constructs a Person that needs to be initialized
      */
     public PersonDAO() {
         // this empty constructor is required by hibernate framework
     }
 
     /**
-     * Constructs a valid {@code PersonDAO}
-     * @param id sets the id of this PersonDAO object
-     * @param userName sets the userName of this PersonDAO object
+     * Constructs a valid Person
+     *
+     * @param firstName sets the first name of this Person object
+     * @param lastName sets the last name of this Person object
      */
-    public PersonDAO(int id, String userName) {
-        setId(id);
-        setUserName(userName);
+    public PersonDAO(String firstName, String lastName) {
+        setFirstName(firstName);
+        setLastName(lastName);
     }
 
     /**
-     * Primary Key - Unique ID for a particular row in the person table.
+     * Gets the unique ID for this Person instance
      *
-     * @return an integer value
+     * @return an integer value representing the unique ID for this Person
      */
     @Id
     @Column(name = "id", nullable = false, insertable = true, updatable = true)
+    @GeneratedValue
     public int getId() {
         return id;
     }
 
     /**
-     * Set the unique ID for a particular row in the person table.
-     * This method should not be called by client code. The value is managed in internally.
+     * Sets the unique ID for this Person instance.
+     * This method should not be called by client code. The value is managed internally.
      *
-     * @param id a unique value.
+     * @param id an integer value
      */
     public void setId(int id) {
         this.id = id;
     }
 
     /**
-     * @return the user name of this User instance
+     * @return the first name of this Person instance
      */
     @Basic
-    @Column(name = "user_name", nullable = false, insertable = true, updatable = true, length = 256)
-    public String getUserName() {
-        return userName;
+    @Column(name = "first_name", nullable = false, insertable = true, updatable = true, length = 256)
+    public String getFirstName() {
+        return firstName;
     }
 
     /**
-     * Sets the user name of this User instance
+     * Sets the first name of this Person instance
      *
-     * @param userName a String value
+     * @param firstName a String value
      */
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
     }
 
+    /**
+     * @return the last name of this Person
+     */
+    @Basic
+    @Column(name = "last_name", nullable = false, insertable = true, updatable = true, length = 256)
+    public String getLastName() {
+        return lastName;
+    }
+
+    /**
+     * Sets the last name of this Person instance
+     *
+     * @param lastName a String value
+     */
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        PersonDAO personDAO = (PersonDAO) o;
+        PersonDAO person = (PersonDAO) o;
 
-        if (id != personDAO.id) return false;
-        if (userName != null ? !userName.equals(personDAO.userName) : personDAO.userName != null)
+        if (id != person.id) return false;
+        if (firstName != null ? !firstName.equals(person.firstName) : person.firstName != null)
+            return false;
+        if (lastName != null ? !lastName.equals(person.lastName) : person.lastName != null)
             return false;
 
         return true;
@@ -92,7 +113,17 @@ public class PersonDAO implements DatabasesAccessObject{
     @Override
     public int hashCode() {
         int result = id;
-        result = 31 * result + (userName != null ? userName.hashCode() : 0);
+        result = 31 * result + (firstName != null ? firstName.hashCode() : 0);
+        result = 31 * result + (lastName != null ? lastName.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Person{" +
+                "id=" + id +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                '}';
     }
 }

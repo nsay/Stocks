@@ -1,34 +1,85 @@
 package edu.uml.nsay.model.database;
 
-import edu.uml.nsay.util.DatabaseUtils;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.apache.http.annotation.Immutable;
+import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
- * Unit test for PersonDAO Class
+ * Unit tests for the PersonDAO class.
  *
  * @author Narith Say
  */
-public class PersonDAOTest extends AbstractBaseDAOTest {
+@Immutable
+public final class PersonDAOTest {
+    // private fields of this class
+    private static final String firstName = "John";
+    private static final String lastName = "Doe";
+    private static final int id = 10;
+    private static PersonDAO person;
 
-    @Test
-    public void testRead() {
-        PersonDAO personDAO = DatabaseUtils.findUniqueResultBy("id", 1, PersonDAO.class, true);
-        assertTrue("first PersonDAO found", personDAO.getId() == 1);
+    /**
+     * Sets up the logic common to each test
+     */
+    @Before
+    public final void setUp() {
+        person = new PersonDAO();
+        person.setFirstName(firstName);
+        person.setLastName(lastName);
+        person.setId(id);
     }
 
+    /**
+     * Test that first name matches the value passed to the set method
+     */
     @Test
-    public void testWrite() throws Exception {
-        Session session = DatabaseUtils.getSessionFactory().openSession();
-        Transaction transaction = session.beginTransaction();
-        PersonDAO personDAO = new PersonDAO();
-        personDAO.setUserName("spencer");
-        session.saveOrUpdate(personDAO);
-        transaction.commit();
+    public final void testGetSetFirstNamePositive() {
+        assertTrue("First name does not match the value passed to the set method", 
+                firstName.equals(person.getFirstName()));
     }
 
+    /**
+     * Test that first name does not match the inverse of the value passed to the set method
+     */
+    @Test
+    public final void testGetSetFirstNameNegative() {
+        assertFalse("First name matches the inverse of the value passed to the set method",
+                new StringBuilder(firstName).reverse().toString().equals(person.getFirstName()));
+    }
 
+    /**
+    * Test that last name matches the value passed to the set method
+    */
+    @Test
+    public final void testGetSetLastNamePositive() {
+        assertTrue("Last name does not match the value passed to the set method",
+                lastName.equals(person.getLastName()));
+    }
+
+    /**
+     * Test that last name does not match the inverse of the value passed to the set method
+     */
+    @Test
+    public final void testGetSetLastNameNegative() {
+        assertFalse("Last name matches the inverse of the value passed to the set method",
+                new StringBuilder(lastName).reverse().toString().equals(person.getFirstName()));
+    }
+
+    /**
+     * Test that ID matches value passed to set method
+     */
+    @Test
+    public final void testGetIdPositive() {
+        assertTrue("ID does not match value passed to set method", id == person.getId());
+    }
+
+    /**
+     * Test that ID does not match different value from that passed to set method
+     */
+    @Test
+    public final void testGetIdNegative() {
+        assertFalse("ID matches a different value from that passed to set method", (id + id * 37) == person.getId());
+    }
 }

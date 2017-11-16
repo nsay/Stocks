@@ -1,21 +1,23 @@
 package edu.uml.nsay.util;
 
+import edu.uml.nsay.model.*;
+import edu.uml.nsay.model.database.StockSymbolDAO;
+import edu.uml.nsay.model.xml.XMLStocks;
+import edu.uml.nsay.model.xml.XMLStocksList;
+import edu.uml.nsay.services.*;
 import com.ibatis.common.jdbc.ScriptRunner;
-import edu.uml.nsay.model.database.DatabasesAccessObject;
-import org.hibernate.Criteria;
-import org.hibernate.Session;
+import org.apache.http.annotation.Immutable;
 import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.criterion.Restrictions;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.ServiceRegistryBuilder;
+import org.joda.time.DateTime;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 /**
@@ -23,143 +25,43 @@ import java.util.List;
  *
  * @author Narith Say
  */
-public class DatabaseUtils {
-
-    public static final String initializationFile = "./src/main/sql/stocks_db_initialization.sql";
-
-    private static SessionFactory sessionFactory;
-    private static Configuration configuration;
+@Immutable
+public final class  DatabaseUtils {
+    // fields of this class
+    public static final String initializationFile = "src/main/sql/stocks_db_initialization.sql";
     private static String HIBERNATE_CONFIGURATION_FILE = "hibernate.cfg.xml";
     private static String JDBC_DRIVER_CLASS_PROPERTY_KEY = "connection.driver_class";
     private static String DATABASE_USER_NAME = "hibernate.connection.username";
     private static String DATABASE_USER_PASSWORD = "hibernate.connection.password";
     private static String DATABASE_URL = "connection.url";
-
-
-    /**
-     * Gets the value of a key from config file
-     *
-     * @param property
-     * @return
-     */
-    private static String getPropFromConfig(String property) {
-        String s = null;
-        Configuration cfg = new Configuration();
-        cfg.configure(HIBERNATE_CONFIGURATION_FILE); //hibernate config xml file name
-        return cfg.getProperties().get(property).toString();
-    }
+    private static SessionFactory sessionFactory;
+    private static Configuration configuration;
 
     /**
-     * @return a connection to the DBMS which is used for DBMS
-     * @throws DatabaseConnectionException if a connection cannot be made.
+     * @return SessionFactory for use with database transactions
      */
-    public static Connection getConnection() throws DatabaseConnectionException {
-        Connection connection = null;
-        try {
-            Class.forName(getPropFromConfig(JDBC_DRIVER_CLASS_PROPERTY_KEY));
-            connection = DriverManager.getConnection(getPropFromConfig(DATABASE_URL),
-                    getPropFromConfig(DATABASE_USER_NAME),
-                    getPropFromConfig(DATABASE_USER_PASSWORD));
-            // an example of throwing an exception appropriate to the abstraction.
-        } catch (ClassNotFoundException | SQLException e) {
-            String message = e.getMessage();
-            throw new DatabaseConnectionException("Could not connection to database." + message, e);
-        }
-        return connection;
-    }
-
-    /**
-     * A utility method that runs a db initialize script.
-     *
-     * @param initializationScript full path to the script to run to create the schema
-     * @throws DatabaseInitializationException
-     */
-    public static void initializeDatabase(String initializationScript) throws DatabaseInitializationException {
-
-        Connection connection = null;
-        final StringBuilder errorLog = new StringBuilder();
-        try {
-            connection = getConnection();
-            connection.setAutoCommit(false);
-            ScriptRunner runner = new ScriptRunner(connection, false, false);
-            InputStream inputStream = new FileInputStream(initializationScript);
-
-            InputStreamReader reader = new InputStreamReader(inputStream);
-
-            runner.setErrorLogWriter(new PrintWriter(new OutputStream() {
-                @Override
-                public void write(int b) throws IOException {
-                    errorLog.append((char) b);
-                }
-            }));
-            runner.runScript(reader);
-
-            reader.close();
-            connection.commit();
-            connection.close();
-
-        } catch (DatabaseConnectionException | SQLException | IOException e) {
-            throw new DatabaseInitializationException("Could not initialize db because of:"
-                    + e.getMessage(), e);
-        }
-        // improvement - previous versions would not single errors in the SQL itself.
-        if (errorLog.length() != 0) {
-            throw new DatabaseInitializationException("SQL init script contained errors:" + errorLog.toString());
-
-
-        }
-    }
-
-    /**
-     * Execute SQL code
-     *
-     * @param someSQL the code to execute
-     * @return true if the operation succeeded.
-     * @throws DatabaseException if accessing and executing the sql failed in an unexpected way.
-     */
-    public static boolean executeSQL(String someSQL) throws DatabaseException {
-        Connection connection = null;
-        boolean returnValue = false;
-        try {
-            connection = DatabaseUtils.getConnection();
-            Statement statement = connection.createStatement();
-            returnValue = statement.execute(someSQL);
-        } catch (DatabaseConnectionException | SQLException e) {
-            throw new DatabaseException(e.getMessage(), e);
-        }
-        return returnValue;
-    }
-
-
-    /*
-   * @return SessionFactory for use with database transactions
-   */
     public static SessionFactory getSessionFactory() {
-
         // singleton pattern
-        synchronized (DatabaseUtils.class) {
+        synchronized (DatabasePersonService.class) {
             if (sessionFactory == null) {
-
+                // applies configuration to service registry which instantiates session factory
                 Configuration configuration = getConfiguration();
-
                 ServiceRegistry serviceRegistry = new ServiceRegistryBuilder()
                         .applySettings(configuration.getProperties())
                         .buildServiceRegistry();
-
                 sessionFactory = configuration.buildSessionFactory(serviceRegistry);
-
             }
         }
         return sessionFactory;
     }
 
     /**
-     * Create a new or return an existing database configuration object.
+     * Create a new or return an existing database configuration object
      *
-     * @return a Hibernate Configuration instance.
+     * @return a Hibernate Configuration instance
      */
     private static Configuration getConfiguration() {
-
+        // applies configuration from xml file
         synchronized (DatabaseUtils.class) {
             if (configuration == null) {
                 configuration = new Configuration();
@@ -170,94 +72,67 @@ public class DatabaseUtils {
     }
 
     /**
-     * A generic finder method where the caller specifies the
-     * property to match as a <CODE>String</CODE> and its value as an arbitrary <CODE>Object</CODE>
-     * A specific entity will be returned as a domain model or null not entities matching
-     * the search criteria are found.
-     * <p/>
-     * NOTE: the caller is responsible for closing the transaction.
-     * This allows collections that are lazily initialized to read after calling this method.
+     * Gets a reference to the same database connection
      *
-     * @param property          a member of the class that represents the column being search in.
-     * @param value             the value that is being match against in the column
-     * @param <T>               a class that implements DatabasesAccessObject
-     * @param handleTransaction true, if this method should open and close transaction false
-     *                          if calling code will be responsible for transaction management
-     * @return an instance of T or NULL
-     * if no value was found matching the criteria.
+     * @return a {onnection to a database
+     * @throws DatabaseConnectionException
      */
-    @SuppressWarnings("unchecked")  // API requires unchecked OK per guidelines
-    public static <T extends DatabasesAccessObject> T findUniqueResultBy(String property,
-                                                                         Object value,
-                                                                         Class T,
-                                                                         boolean handleTransaction) {
-        T returnValue = null;
-        Session session = null;
+    public static Connection getConnection() throws DatabaseConnectionException {
+        Connection connection = null;
+        Configuration configuration = getConfiguration();
         try {
-            Transaction transaction = null;
-            session = getSessionFactory().openSession();
-            transaction = session.beginTransaction();
-            Criteria criteria = session.createCriteria(T);
-            criteria = criteria.add(Restrictions.eq(property, value));
-
-            returnValue = (T) criteria.uniqueResult();
-            if (handleTransaction) {
-                transaction.commit();
-            }
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+            Class.forName(configuration.getProperty(JDBC_DRIVER_CLASS_PROPERTY_KEY));
+            String databaseUrl = configuration.getProperty(DATABASE_URL);
+            String username = configuration.getProperty(DATABASE_USER_NAME);
+            String password = configuration.getProperty(DATABASE_USER_PASSWORD);
+            connection = DriverManager.getConnection(databaseUrl, username, password);
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new DatabaseConnectionException(e.getMessage(), e);
         }
-
-        return returnValue;
+        return connection;
     }
 
     /**
-     * A generic finder  method where the caller specifies the
-     * property to match as a <CODE>String</CODE> and its value as an <CODE>Object</CODE> which
-     * contains that value.
-     * <p/>
-     * A list of the specified entity will be returned as a domain model or an empty list if no
-     * entities matching the search criteria are found.
-     * <p/>
-     * NOTE: the caller is responsible for closing the transaction if handleTransaction is false.
-     * This allows collections that are lazily initialized to read after calling this method.
-     * <p/>
+     * A utility method that runs a database initialize script
      *
-     * @param property          a member of the class that represents the column being search in.
-     * @param value             the value that is being match against in the column
-     * @param <T>               a class that implements DatabasesAccessObject
-     * @param handleTransaction true, if this method should open and close transaction false
-     *                          if calling code will be responsible for transaction management
-     * @return a list of type <T> objects
-     * if no value was found matching the criteria.
+     * @param initializationScript full path to the script to run to create the schema
+     * @throws DatabaseInitializationException
      */
-    @SuppressWarnings("unchecked")  // API requires unchecked OK per guidelines
-    public static <T extends DatabasesAccessObject> List<T> findResultsBy(String property,
-                                                                          Object value,
-                                                                          Class T,
-                                                                          boolean handleTransaction) {
-        Session session = null;
-        List<T> returnValue;
+    public static void initializeDatabase(String initializationScript) throws DatabaseInitializationException {
+
+        Connection connection = null;
         try {
-            Transaction transaction = null;
-            session = getSessionFactory().openSession();
-            if (handleTransaction) {
-                transaction = session.beginTransaction();
-            }
-            Criteria criteria = session.createCriteria(T);
-            criteria = criteria.add(Restrictions.eq(property, value));
-            returnValue = (List<T>) criteria.list();
-            if (handleTransaction) {
-                transaction.commit();
-            }
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            ScriptRunner runner = new ScriptRunner(connection, false, false);
+            InputStream inputStream = new FileInputStream(initializationScript);
+
+            InputStreamReader reader = new InputStreamReader(inputStream);
+
+            runner.runScript(reader);
+            reader.close();
+            connection.commit();
+            connection.close();
+
+        } catch (DatabaseConnectionException | SQLException |IOException e) {
+            throw new DatabaseInitializationException("Could not initialize db because of:"
+                    + e.getMessage(),e);
         }
-        return returnValue;
     }
 
+    /**
+     * Retrieves XML data in the form of XML domain objects, which are converted to database access objects
+     * and stored in the database configuration defined in the hibernate xml file
+     *
+     * @param xmlData a String containing a reference to the file containing the XML data to be persisted to the database
+     */
+    public static final void persistXMLData(String xmlData) throws XMLUnmarshalException, StockServiceException {
+        XMLStocksList quoteList = null;
+        quoteList = XMLUtils.unmarshal(xmlData);
+        List<XMLStocks> xmlQuotes = quoteList.getStock();
+        DatabaseStockService service = (DatabaseStockService) ServiceFactory.getStockService(ServiceType.DATABASE);
+        for (XMLStocks quote : xmlQuotes) {
+            service.addOrUpdateQuote(DateTime.parse(quote.getTime(), StockQuote.getDateFormatter()), new BigDecimal(quote.getPrice()), new StockSymbolDAO(quote.getSymbol()));
+        }
+    }
 }

@@ -1,28 +1,42 @@
 package edu.uml.nsay.services;
 
+import org.apache.http.annotation.Immutable;
+
 /**
- * A factory that returns a <CODE>StockService</CODE> instance.
+ * A factory that returns a StockService instance.
  *
  * @author Narith Say
  */
-public class ServiceFactory {
+@Immutable
+public final class ServiceFactory {
 
     /**
-     * Prevent instantiations
+     * Hides the constructor because this class contains only static methods
      */
-    private ServiceFactory() {}
-
-    /**
-     *
-     * @return get a <CODE>StockService</CODE> instance
-     */
-    public static StockService getStockService() {
-        return new DatabaseStockService();
+    private ServiceFactory() {
     }
 
     /**
+     * Constructs a new StockService instance
      *
-     * @return get a <CODE>UserService</CODE> instance
+     * @return an object implementing the StockService interface
      */
-    public static UserService getUserService() { return new DatabaseUserService(); }
+    public static final StockService getStockService(ServiceType type) throws StockServiceException {
+        if (type.equals(ServiceType.DATABASE)) {
+            return new DatabaseStockService();
+        } else if (type.equals(ServiceType.YAHOO)) {
+            return new YahooStockService();
+        } else {
+            throw new StockServiceException("Argument specifies an invalid ServiceType");
+        }
+    }
+
+    /**
+     * Constructs a new PersonService instance
+     *
+     * @return an object implementing the PersonService interface
+     */
+    public static final PersonService getPersonService() {
+        return new DatabasePersonService();
+    }
 }

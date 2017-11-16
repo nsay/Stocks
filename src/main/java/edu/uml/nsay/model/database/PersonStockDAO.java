@@ -1,11 +1,6 @@
 package edu.uml.nsay.model.database;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 /**
  * This class models the person_stocks database table
@@ -13,96 +8,98 @@ import javax.persistence.Table;
  * @author Narith Say
  */
 @Entity
-@Table(name = "person_stocks", schema = "", catalog = "stocks")
-public class PersonStockDAO implements DatabasesAccessObject {
-
+@Table(name="person_stocks", catalog="stocks")
+public class PersonStockDAO implements DatabaseAccessObject {
     // private fields of this class
     private int id;
-    private PersonDAO personDAO;
-    private StockSymbolDAO stockSymbolDAO;
+    private PersonDAO person;
+    private StockSymbolDAO stockSymbol;
 
     /**
-     * Constructs a {@code PersonStockDAO} that needs to be initialized
+     * Constructs a PersonStockDAO that needs to be initialized
      */
     public PersonStockDAO() {
         // this empty constructor is required by hibernate framework
     }
 
     /**
-     * Constructs a valid {@code PersonStockDAO}
-     * @param personDAO the person to assign the stock symbol to
-     * @param stockSymbol  the stock symbol to associate the person with
+     * Constructs a valid PersonStockDAO instance
+     *
+     * @param person the person to assign the stock symbol to
+     * @param symbol  the stock symbol to associate the person with
      */
-    public PersonStockDAO(PersonDAO personDAO, StockSymbolDAO stockSymbol) {
-        setPerson(personDAO);
-        setStockSymbol(stockSymbol);
+    public PersonStockDAO(PersonDAO person, StockSymbolDAO symbol) {
+        setPerson(person);
+        setStockSymbol(symbol);
     }
 
     /**
-     * Primary Key - Unique ID for a particular row in the person_stocks table.
+     * Gets the unique ID for this PersonStockDAO instance
      *
-     * @return an integer value
+     * @return an integer value representing the unique ID for this PersonStock
      */
     @Id
     @Column(name = "id", nullable = false, insertable = true, updatable = true)
+    @GeneratedValue
     public int getId() {
         return id;
     }
 
     /**
-     * Set the unique ID for a particular row in the person_stocks table.
-     * This method should not be called by client code. The value is managed in internally.
+     * Sets the unique ID for this PersonStockDAO instance.
+     * This method should not be called by client code. The value is managed internally.
      *
-     * @param id a unique value.
+     * @param id an integer value
      */
     public void setId(int id) {
         this.id = id;
     }
 
     /**
-     * Returns a defensive copy of the mutable {@code PersonDAO} object
+     * Returns a defensive copy of the mutable PersonDAO object
      * assigned to the corresponding field of this class
      *
-     * @return the person associated with this {@code PersonStockDAO} instance
+     * @return the person associated with this PersonStockDAO instance
      */
     @ManyToOne
     @JoinColumn(name = "person_id", referencedColumnName = "id", nullable = false)
     public PersonDAO getPerson() {
-        PersonDAO personDAO = new PersonDAO(this.personDAO.getId(), this.personDAO.getUserName());
-        personDAO.setId(this.personDAO.getId());
-        return personDAO;
+        PersonDAO person = new PersonDAO(this.person.getFirstName(), this.person.getLastName());
+        person.setId(this.person.getId());
+        return person;
     }
 
     /**
-     * Sets the first name of this {@code PersonStockDAO} instance
-     * @param personDAO a PersonDAO instance
+     * Sets the first name of this PersonStockDAO instance
+     *
+     * @param person a Person instance
      */
-    public void setPerson(PersonDAO personDAO) {
-        this.personDAO = personDAO;
+    public void setPerson(PersonDAO person) {
+        this.person = person;
     }
 
     /**
-     * Returns a defensive copy of the mutable {@code StockSymbolDAO} object
+     * Returns a defensive copy of the mutable StockSymbolDAO object
      * assigned to the corresponding field of this class
      *
-     * @return the stock symbol of this {@code StockSymbolDAO}
+     * @return the stock symbol of this PersonStockDAO
      */
     @ManyToOne
     @JoinColumn(name = "symbol_id", referencedColumnName = "id", nullable = false)
     public StockSymbolDAO getStockSymbol() {
 
-        StockSymbolDAO stockSymbolDAO = new StockSymbolDAO(this.stockSymbolDAO.getSymbol());
-        stockSymbolDAO.setId(this.stockSymbolDAO.getId());
-        return stockSymbolDAO;
+        StockSymbolDAO stockSymbol = new StockSymbolDAO(this.stockSymbol.getSymbol());
+        stockSymbol.setId(this.stockSymbol.getId());
+        return stockSymbol;
     }
 
     /**
-     * Sets the stock symbol of this {@code StockSymbolDAO} instance
+     * Sets the stock symbol of this PersonStockDAO instance
      *
-     * @param stockSymbolDAO a String value
+     * @param stockSymbol a String value
      */
-    public void setStockSymbol(StockSymbolDAO stockSymbolDAO) {
-        this.stockSymbolDAO = stockSymbolDAO;
+    public void setStockSymbol(StockSymbolDAO stockSymbol) {
+        this.stockSymbol = stockSymbol;
     }
 
     @Override
@@ -110,15 +107,29 @@ public class PersonStockDAO implements DatabasesAccessObject {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        PersonStockDAO that = (PersonStockDAO) o;
+        PersonStockDAO personStock = (PersonStockDAO) o;
 
-        if (id != that.id) return false;
+        if (id != personStock.id) return false;
+        if (!person.equals(personStock.person)) return false;
+        if (!stockSymbol.equals(personStock.stockSymbol)) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        return id;
+        int result = id;
+        result = 31 * result + person.hashCode();
+        result = 31 * result + stockSymbol.hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "PersonStock{" +
+                "id=" + id +
+                ", person='" + person + '\'' +
+                ", stockSymbol='" + stockSymbol + '\'' +
+                '}';
     }
 }

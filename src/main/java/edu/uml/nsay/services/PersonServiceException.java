@@ -1,25 +1,32 @@
 package edu.uml.nsay.services;
 
+import org.apache.http.annotation.Immutable;
+
 /**
- * Used to signal that a user name is not unique.
+ * Used to signal a problem with the PersonService.
  *
  * @author Narith Say
  */
-public class DuplicateUserNameException extends Exception {
+@Immutable
+public final class PersonServiceException extends Exception {
 
     /**
-     * Constructs a new exception with the specified detail message.
+     * Constructs a new exception with the specified detail message.  The
+     * cause is not initialized, and may subsequently be initialized by
+     * a call to {@link #initCause}.
      *
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public DuplicateUserNameException(String message) {
+    public PersonServiceException(String message) {
         super(message);
     }
 
     /**
      * Constructs a new exception with the specified detail message and
-     * cause.
+     * cause.  <p>Note that the detail message associated with
+     * {@code cause} is <i>not</i> automatically incorporated in
+     * this exception's detail message.
      *
      * @param message the detail message (which is saved for later retrieval
      *                by the {@link #getMessage()} method).
@@ -29,7 +36,7 @@ public class DuplicateUserNameException extends Exception {
      *                unknown.)
      * @since 1.4
      */
-    public DuplicateUserNameException(String message, Throwable cause) {
+    public PersonServiceException(String message, Throwable cause) {
         super(message, cause);
     }
 }

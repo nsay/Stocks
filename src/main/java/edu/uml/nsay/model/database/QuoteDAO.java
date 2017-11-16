@@ -1,72 +1,66 @@
 package edu.uml.nsay.model.database;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.validation.constraints.Digits;
+import edu.uml.nsay.model.StockQuote;
+import org.joda.time.DateTime;
+
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 /**
- * This class models the quote database table
+ * This class models the quotes database table
  *
  * @author Narith Say
  */
 @Entity
-@Table(name = "quote", schema = "", catalog = "stocks")
-public class QuoteDAO implements DatabasesAccessObject {
-
+@Table(name="quotes", catalog="stocks")
+public class QuoteDAO implements DatabaseAccessObject {
     private int id;
     private Timestamp time;
     private BigDecimal price;
     private StockSymbolDAO stockSymbol;
 
     /**
-     * Constructs a {@code QuoteDAO} that needs to be initialized
+     * Constructs a QuoteDAO that needs to be initialized
      */
     public QuoteDAO() {
         // this empty constructor is required by hibernate framework
     }
 
     /**
-     * Constructs a valid {@code QuoteDAO}
+     * Constructs a valid QuoteDAO
+     *
      * @param time the time to assign to this instance
      * @param price  the price to assign to this instance
-     * @param stockSymbol the stockSymbol to assign to this instance
+     * @param symbol the stockSymbol to assign to this instance
      */
-    public QuoteDAO(Timestamp time, BigDecimal price, StockSymbolDAO stockSymbol) {
+    public QuoteDAO(DateTime time, BigDecimal price, StockSymbolDAO symbol) {
         setTime(time);
         setPrice(price);
-        setStockSymbol(stockSymbol);
+        setStockSymbol(symbol);
     }
 
     /**
-     * Primary Key - Unique ID for a particular row in the quote table.
-     *
-     * @return an integer value
+     * @return the id field of this QuoteDAO instance
      */
     @Id
     @Column(name = "id",  nullable = false, insertable = true, updatable = true)
+    @GeneratedValue
     public int getId() {
         return id;
     }
 
     /**
-     * Set the unique ID for a particular row in the quote table.
-     * This method should not be called by client code. The value is managed in internally.
+     * Sets the id field of this user to the parameter value
      *
-     * @param id a unique value.
+     * @param id an integer value
      */
     public void setId(int id) {
         this.id = id;
     }
 
     /**
-     * @return the time of this quote instance
+     * @return the time field of this QuoteDAO instance
      */
     @Basic
     @Column(name = "time", nullable = false, insertable = true, updatable = true)
@@ -75,38 +69,37 @@ public class QuoteDAO implements DatabasesAccessObject {
     }
 
     /**
-     * Sets the time of this quote instance
+     * Sets the time field of this user to the parameter value
      *
-     * @param time a Timestamp value
+     * @param time a Timestamp object
      */
-    public void setTime(Timestamp time) {
-        this.time = time;
+    public void setTime(DateTime time) {
+        this.time = new Timestamp(time.getMillis());
     }
 
     /**
-     * @return the price of this quote instance
+     * @return the price field of this QuoteDAO instance
      */
     @Basic
-    @Digits(integer=5, fraction=2)
-    @Column(name = "price", nullable = false, insertable = true, updatable = true, precision = 0)
+    @Column(name = "price", nullable = false, insertable = true, updatable = true, precision = 2)
     public BigDecimal getPrice() {
         return price;
     }
 
     /**
-     * Sets the price of this quote instance
+     * Sets the price field of this QuoteDAO instance
      *
-     * @param price a BigDecimal value
+     * @param price a BigDecimal object
      */
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
     /**
-     * Returns a defensive copy of the mutable {@code StockSymbolDAO} object
+     * Returns a defensive copy of the mutable StockSymbolDAO object
      * assigned to the corresponding field of this class
      *
-     * @return the stockSymbol field of this {@code StockSymbolDAO} instance
+     * @return the stockSymbol field of this QuoteDAO instance
      */
     @ManyToOne
     @JoinColumn(name = "symbol_id", referencedColumnName = "id",nullable = false)
@@ -117,9 +110,9 @@ public class QuoteDAO implements DatabasesAccessObject {
     }
 
     /**
-     * Sets the stockSymbol field of this {@code StockSymbolDAO} instance
+     * Sets the stockSymbol field of this QuoteDAO instance
      *
-     * @param stockSymbol a DatabaseStockSymbol object
+     * @param stockSymbol a StockSymbolDAO object
      */
     public void setStockSymbol(StockSymbolDAO stockSymbol) {
         this.stockSymbol = stockSymbol;
@@ -130,11 +123,12 @@ public class QuoteDAO implements DatabasesAccessObject {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        QuoteDAO quoteDAO = (QuoteDAO) o;
+        QuoteDAO stockQuote = (QuoteDAO) o;
 
-        if (id != quoteDAO.id) return false;
-        if (price != quoteDAO.price) return false;
-        if (time != null ? !time.equals(quoteDAO.time) : quoteDAO.time != null) return false;
+        if (id != stockQuote.id) return false;
+        if (price != stockQuote.price) return false;
+        if (time != null ? !time.equals(stockQuote.time) : stockQuote.time != null) return false;
+        if (!stockSymbol.equals(stockQuote.stockSymbol)) return false;
 
         return true;
     }
@@ -144,6 +138,17 @@ public class QuoteDAO implements DatabasesAccessObject {
         int result = id;
         result = 31 * result + (time != null ? time.hashCode() : 0);
         result = 31 * result + price.hashCode();
+        result = 31 * result + (stockSymbol != null ? stockSymbol.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "StockQuote{" +
+                "id =" + id +
+                ", stockSymbol=" + stockSymbol +
+                ", date='" + new DateTime(time).toString(StockQuote.getDateFormatter()) + '\'' +
+                ", price='" + price + '\'' +
+                '}';
     }
 }

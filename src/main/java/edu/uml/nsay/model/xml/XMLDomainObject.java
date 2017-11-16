@@ -1,9 +1,9 @@
 package edu.uml.nsay.model.xml;
 
 /**
- * A marker class the indicates the class was created from an XML instance
+ * A marker class the indicates the implementing class was created from an XML instance.
  *
- * @author Narith
+ * @author Narith Say
  */
 public interface XMLDomainObject {
 }

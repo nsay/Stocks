@@ -1,106 +1,112 @@
 package edu.uml.nsay.services;
 
-import edu.uml.nsay.model.StockData;
 import edu.uml.nsay.model.StockQuote;
-import edu.uml.nsay.util.DatabaseInitializationException;
-import edu.uml.nsay.util.Interval;
+import edu.uml.nsay.model.database.StockSymbolDAO;
+import edu.uml.nsay.util.*;
+import org.apache.http.annotation.Immutable;
+import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+import java.sql.SQLException;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
- * Unit tests for the DatabaseStockService
+ * Unit tests for the DatabaseStockService class.
  *
  * @author Narith Say
  */
-public class DatabaseStockServiceTest extends DatabaseServiceTest {
+@Immutable
+public final class DatabaseStockServiceTest {
+    // fields of this class
+    private DatabaseStockService databaseStockService;
+    private DateTime startRange;
+    private DateTime endRange;
+    private StockSymbolDAO stockSymbol;
+    private HoursInterval interval;
+    private static final int NUMBER_OF_DAYS = 100;
 
-    private StockService databaseStockService;
-
+    /**
+     * Sets up logic common to each test
+     *
+     * @throws DatabaseInitializationException
+     * @throws DatabaseConnectionException
+     * @throws SQLException
+     * @throws StockServiceException
+     */
     @Before
-    public void setUp() throws DatabaseInitializationException {
-        super.setUp();
-        databaseStockService = ServiceFactory.getStockService();
-    }
-
-    @Test
-    public void testGetQuote() throws Exception {
-        String symbol = "APPL";
-        StockQuote stockQuote = databaseStockService.getQuote(symbol);
-        //assertNotNull("Verify we can get a stock quote from the db", stockQuote);
-        assertEquals("Make sure the symbols match", symbol, stockQuote.getSymbol());
-    }
-
-    @Test
-    public void testGetQuoteWithIntervalBasic() throws Exception {
-        String symbol = "GOOG";
-        String fromStringDate = "2000-02-10 00:00:01";
-        String untilStringDate = "2015-02-03 00:00:01";
-
-        Calendar fromCalendar = makeCalendarFromString(fromStringDate);
-        Calendar untilCalendar = makeCalendarFromString(untilStringDate);
-
-        List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.DAY);
-
-        assertFalse("verify stock quotes where returned", stockQuotes.isEmpty());
-    }
-
-    @Test
-    public void testGetQuoteWithinRangeDay() throws Exception {
-
-        String fromDateString = "2015-02-10 00:00:01";
-        String endDateString = "2015-02-13 00:00:01";
-        String symbol = "AMZN";
-
-        Calendar fromCalendar = makeCalendarFromString(fromDateString);
-        Calendar untilCalendar = makeCalendarFromString(endDateString);
-
-        List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.DAY);
-        assertEquals("got back expected number of stockquotes for one day interval", 4, stockQuotes.size());
-
-        stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.MINUTE);
-        assertEquals("got back expected number of stockquotes for one minute interval", 4, stockQuotes.size());
-    }
-
-    @Test
-    public void testGetQuoteWithinRangeMinute() throws Exception {
-
-        String fromDateString = "2015-02-10 00:02:01";
-        String endDateString = "2015-02-10 00:04:01";
-        String symbol = "AMZN";
-
-        Calendar fromCalendar = makeCalendarFromString(fromDateString);
-        Calendar untilCalendar = makeCalendarFromString(endDateString);
-
-        List<StockQuote> stockQuotes = databaseStockService.getQuote(symbol, fromCalendar, untilCalendar, Interval.MINUTE);
-        assertEquals("got back expected number of stockquotes for one minute interval", 3, stockQuotes.size());
+    public final void setUp() throws DatabaseConnectionException, SQLException, DatabaseInitializationException , StockServiceException{
+        DatabaseUtils.initializeDatabase(DatabaseUtils.initializationFile);
+        databaseStockService = (DatabaseStockService) ServiceFactory.getStockService(ServiceType.DATABASE);
+        startRange = DateTime.now().minusDays(NUMBER_OF_DAYS);
+        endRange = DateTime.now();
+        stockSymbol = new StockSymbolDAO("AAPL");
+        interval = HoursInterval.WEEK;
     }
 
     /**
-     * Handy dandy helper method that converts Strings in the format of   StockData.dateFormat
-     * to Calendar instances set to the date expressed in the string.
+     * Test that the return value has the correct stock symbol
      *
-     * @param dateString a data and time in this format: StockData.dateFormat
-     * @return a calendar instance set to the time in the string.
-     * @throws ParseException if the string is not in the correct format, we can't tell what
-     *                        time it is, and therefore can't make a calender set to that time.
+     * @throws StockServiceException
      */
-    private Calendar makeCalendarFromString(String dateString) throws ParseException {
-        DateFormat format = new SimpleDateFormat(StockData.dateFormat, Locale.ENGLISH);
-        Date date = format.parse(dateString);
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        return calendar;
-
+    @Test
+    public final void testGetQuoteSingleArgStockSymbolPositive() throws StockServiceException {
+        assertTrue("Stock symbol returned from return value of getQuote does not equal stock symbol initialized with parameter string",
+                databaseStockService.getQuote(stockSymbol.getSymbol()).getSymbol().equals(stockSymbol.getSymbol()));
     }
 
+    /**
+     * Test that the return value has an incorrect stock symbol
+     *
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetQuoteSingleArgStockSymbolNegative() throws StockServiceException {
+        assertFalse("Stock symbol returned from return value of getQuote equals stock symbol initialized with lowercase-coverted parameter string",
+                databaseStockService.getQuote(stockSymbol.getSymbol()).getSymbol().equals(stockSymbol.getSymbol().toLowerCase()));
+    }
+
+    /**
+     * Test that the return value has the correct date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test
+    public final void testGetQuoteSingleArgTimePositive() throws StockServiceException {
+        assertTrue("Date recorded returned from return value of getQuote does not equal the last element returned by the database query",
+            databaseStockService.getQuote(stockSymbol.getSymbol()) instanceof StockQuote);
+    }
+
+    /**
+     * Test that the return value has an incorrect date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test(expected=StockServiceException.class)
+    public final void testGetQuoteSingleArgTimeNegative() throws StockServiceException {
+        databaseStockService.getQuote("BLARG");
+    }
+
+
+    /**
+     * Test that the return value has an correct date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test(expected=StockServiceException.class)
+    public final void testGetQuoteTripleArgTimePositive() throws StockServiceException {
+        databaseStockService.getQuote(stockSymbol.getSymbol(), endRange, startRange);
+    }
+
+    /**
+     * Test that the return value has an incorrect date recorded
+     *
+     * @throws StockServiceException
+     */
+    @Test(expected=StockServiceException.class)
+    public final void timeNegative() throws StockServiceException {
+                databaseStockService.getQuote(stockSymbol.getSymbol(), endRange, startRange, interval);
+    }
 }

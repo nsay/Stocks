@@ -1,61 +1,75 @@
 package edu.uml.nsay.model;
 
+import org.apache.http.annotation.Immutable;
+
 import java.math.BigDecimal;
-import java.util.Date;
+import java.text.NumberFormat;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 /**
- * A container class that contains stock data.
+ * This class stores information about a stock of a particular symbol, date and price.
  *
  * @author Narith Say
  */
-public class StockQuote extends StockData {
-
-    private BigDecimal price;
-    private Date date;
-    private String symbol;
+@Immutable
+public final class StockQuote {
+    // private fields of this class
+    public static final String DATE_PATTERN = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern(DATE_PATTERN);
+    private final String symbol;
+    private final BigDecimal price;
+    private final DateTime time;
 
     /**
-     * Create a new instance of a StockQuote.
+     * Constructs a new StockQuote instance
      *
-     * @param price  the share price for the given date
-     * @param date   the date of the share price
-     * @param symbol the stock symbol.
+     * @param time date the stock info was recorded
+     * @param price price of the stock on the provided date
+     * @param symbol symbol for the company issuing the stock
      */
-    public StockQuote(BigDecimal price, Date date, String symbol) {
-        super();
+    public StockQuote(DateTime time, BigDecimal price, String symbol) {
+        // if any parameter values are null, throw exception; otherwise, initialize fields
+        if ((time == null) || (price == null) || (symbol == null)) {
+            throw new RuntimeException();
+        }
+        this.time = new DateTime(time);
         this.price = price;
-        this.date = date;
         this.symbol = symbol;
     }
 
     /**
-     * @return Get the share price for the given date.
+     * @return the symbol that represents the company issuing this stock
      */
-    public BigDecimal getPrice() {
+    public final String getSymbol() {
+        return symbol;
+    }
+
+    /**
+     * @return the price of one share of this stock
+     */
+    public final BigDecimal getPrice() {
         return price;
     }
 
     /**
-     * @return The date of the share price
+     * @return the date that the info for this stock was recorded
      */
-    public Date getDate() {
-        return date;
+    public final DateTime getTime() {
+        return time;
     }
 
     /**
-     * @return The stock symbol.
+     * @return an instance of an object for formatting all StockQuote dates according to the specified date pattern
      */
-    public String getSymbol() {
-        return symbol;
-    }
+    public static final DateTimeFormatter getDateFormatter() { return dateFormatter; }
 
+    /**
+     * @return a String containing the formatted values of the fields of this instance
+     */
     @Override
     public String toString() {
-        String dateString = simpleDateFormat.format(date);
-        return "StockQuote{" +
-                "price=" + price +
-                ", date=" + dateString +
-                ", symbol='" + symbol + '\'' +
-                '}';
+        return " [ " + getSymbol() + " " + time.toString(dateFormatter) + " " + NumberFormat.getCurrencyInstance().format(getPrice()) + " ] ";
     }
 }

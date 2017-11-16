@@ -1,11 +1,14 @@
 package edu.uml.nsay.util;
 
+import org.apache.http.annotation.Immutable;
+
 /**
  * This class is used to signal a problem initializing to a database.
  *
  * @author Narith Say
  */
-public class DatabaseInitializationException extends Exception {
+@Immutable
+public final class DatabaseInitializationException extends Exception {
 
     /**
      * Constructs a new exception with the specified detail message.  The
@@ -15,9 +18,7 @@ public class DatabaseInitializationException extends Exception {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public DatabaseInitializationException(String message) {
-        super(message);
-    }
+    public DatabaseInitializationException(String message) { super(message); }
 
     /**
      * Constructs a new exception with the specified detail message and
@@ -33,7 +34,5 @@ public class DatabaseInitializationException extends Exception {
      *         unknown.)
      * @since  1.4
      */
-    public DatabaseInitializationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    public DatabaseInitializationException(String message, Throwable cause) { super(message, cause); }
 }

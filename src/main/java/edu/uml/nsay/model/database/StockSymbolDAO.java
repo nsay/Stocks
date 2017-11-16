@@ -1,61 +1,56 @@
 package edu.uml.nsay.model.database;
 
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 /**
- * This class models the stock_symbol database table
+ * This class models the stock_symbols database table
  *
  * @author Narith Say
  */
 @Entity
-@Table(name = "stock_symbol", schema = "", catalog = "stocks")
-public class StockSymbolDAO implements DatabasesAccessObject {
-
-    private int id;
-    private String symbol;
+@Table(name="stock_symbols", catalog="stocks")
+public class StockSymbolDAO implements DatabaseAccessObject {
 
     /**
-     * Constructs a {@code StockSymbolDAO} that needs to be initialized
+     * Constructs a StockSymbol that needs to be initialized
      */
     public StockSymbolDAO() {
         // this empty constructor is required by hibernate framework
     }
 
     /**
-     * Constructs a valid {@code StockSymbol} instance
+     * Constructs a valid StockSymbol instance
+     *
      * @param symbol
      */
     public StockSymbolDAO(String symbol) {
         setSymbol(symbol);
     }
 
+    private int id;
+    private String symbol;
+
     /**
-     * Primary Key - Unique ID for a particular row in the stock_symbol table.
-     *
-     * @return an integer value
+     * @return the id field of this StockSymbol instance
      */
     @Id
-    @Column(name = "id", nullable = false, insertable = true, updatable = true)
+    @Column(name = "id",  nullable = false, insertable = true, updatable = true)
+    @GeneratedValue
     public int getId() {
         return id;
     }
 
     /**
-     * Set the unique ID for a particular row in the stock_symbol table.
-     * This method should not be called by client code. The value is managed in internally.
+     * Sets the id field of this StockSymbol instance
      *
-     * @param id a unique value.
+     * @param id an int value
      */
     public void setId(int id) {
         this.id = id;
     }
 
     /**
-     * @return the symbol of this stock_symbol instance
+     * @return the symbol field of this StockSymbol instance
      */
     @Basic
     @Column(name = "symbol", nullable = false, insertable = true, updatable = true, length = 4)
@@ -64,9 +59,9 @@ public class StockSymbolDAO implements DatabasesAccessObject {
     }
 
     /**
-     * Sets the symbol of this stock_symbol instance
+     * Sets the symbol field of this StockSymbol instance
      *
-     * @param symbol a Timestamp value
+     * @param symbol a String
      */
     public void setSymbol(String symbol) {
         this.symbol = symbol;
@@ -87,8 +82,12 @@ public class StockSymbolDAO implements DatabasesAccessObject {
 
     @Override
     public int hashCode() {
-        int result = id;
-        result = 31 * result + (symbol != null ? symbol.hashCode() : 0);
+        int result = 31 * (symbol != null ? symbol.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "symbol=" + symbol;
     }
 }
